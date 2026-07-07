@@ -1,0 +1,16 @@
+{
+  "seed": 358635235,
+  "difficulty": "medium",
+  "requested_blanks": 45,
+  "count": 50,
+  "variants_per_image": 3,
+  "variant_severity": 1.2,
+  "max_variant_attempts": 12,
+  "border_check": 18,
+  "font_dir": "phases\\generated_data\\Fonts",
+  "output_directory": "sudoku_runs\\sudoku_medium_20260706_192359_157767_seed_358635235",
+  "original_images_directory": "sudoku_runs\\sudoku_medium_20260706_192359_157767_seed_358635235\\images_original",
+  "variant_images_directory": "sudoku_runs\\sudoku_medium_20260706_192359_157767_seed_358635235\\images_variant",
+  "labels_file": "sudoku_runs\\sudoku_medium_20260706_192359_157767_seed_358635235\\labels.csv",
+  "total_labeled_images_written": 400
+}

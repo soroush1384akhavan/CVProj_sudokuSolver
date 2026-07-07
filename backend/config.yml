@@ -1,0 +1,134 @@
+# Global project configuration
+# Edit this file instead of changing constants inside Python files.
+
+app:
+  name: Sudoku CV Windows API
+  env: development
+
+server:
+  host: 127.0.0.1
+  port: 8000
+
+cors:
+  origins:
+    - http://localhost:5173
+    - http://127.0.0.1:5173
+
+paths:
+  storage_dir: storage
+  uploads_dir: storage/uploads
+  runs_dir: storage/runs
+  models_dir: models
+
+preprocessing:
+  max_side: 1400
+  gaussian_blur_kernel: 7
+  adaptive_threshold:
+    block_size: 11
+    c: 1
+
+grid_detection:
+  max_contours_to_check: 20
+  min_contour_area: 10000
+  approx_epsilon_ratio: 0.1
+  board_size: 450
+
+cell_extraction:
+  margin_ratio: 0.14
+  empty_pixel_ratio_threshold: 0.1
+  digit_input_size: 28
+  montage_cell_size: 40
+  save_cells: true
+
+digit_recognition:
+  model_path: models/digit_cnn.pth
+  confidence_threshold: 0.75
+  class_names:
+    0: empty
+    1: one
+    2: two
+    3: three
+    4: four
+    5: five
+    6: six
+    7: seven
+    8: eight
+    9: nine
+  preprocessing:
+    normalize_to_0_1: true
+    invert_input: false
+
+  model:
+    name: DigitCNN
+    input_channels: 1
+    num_classes: 10
+    image_size: 28
+    dropout: 0.25
+
+  training:
+    seed: 42
+    batch_size: 64
+    epochs: 20
+    learning_rate: 0.001
+    weight_decay: 0.0001
+    early_stopping_patience: 6
+    lr_scheduler_patience: 3
+    lr_scheduler_factor: 0.5
+    checkpoint_name: digit_cnn.pth
+
+  data:
+    validation_split: 0.1
+    include_zero_digit: false
+    num_workers: 0
+
+    hoda:
+      raw_dir: "phases/phase_04_digit_recognition/src/datasets/hoda"
+      train_cdb: "DigitDB/Train 60000.cdb"
+      test_cdb: "DigitDB/Test 20000.cdb"
+
+    mnist:
+      root_dir: "phases/phase_04_digit_recognition/src/datasets/mnist"
+      download: false
+
+    chars74k:
+      root_dir: "phases/phase_04_digit_recognition/src/datasets/chars74k/EnglishFnt/Fnt"
+      test_split: 0.1
+
+    sudoku_cells:
+      include_empty_cells: false
+      validation_split: 0.1
+      cache_dir: "storage/sudoku/cell_cache"
+      generated_roots:
+        - "phases/phase_04_digit_recognition/src/datasets/fromsoduko/sudoku_medium"
+      dat_roots:
+        - "storage/sudoku/raw/v2_train/v2_train"
+
+  sudoku_fine_tune:
+    epochs: 20
+    learning_rate: 0.0001
+    weight_decay: 0.0001
+    early_stopping_patience: 3
+    lr_scheduler_patience: 2
+    lr_scheduler_factor: 0.5
+
+  augmentation:
+    enabled: true
+    pad_extra: 8
+    affine_p: 0.35
+    translate_percent: 0.03
+    scale_min: 0.97
+    scale_max: 1.03
+    rotate_limit: 5
+    shear_limit: 2
+    brightness_limit: 0.08
+    contrast_limit: 0.08
+    brightness_contrast_p: 0.25
+    blur_p: 0.04
+    empty_threshold: 12
+
+solver:
+  use_mrv: true
+  empty_value: 0
+
+ui:
+  show_cells_separately: true
