@@ -99,17 +99,19 @@ digit_recognition:
       validation_split: 0.1
       cache_dir: "storage/sudoku/cell_cache"
       generated_roots:
-        - "phases/phase_04_digit_recognition/src/datasets/fromsoduko/sudoku_medium"
+        - "storage/sudoku/synthetic/sudoku_medium_20260712_130818_411923_seed_274979083"
       dat_roots:
         - "storage/sudoku/raw/v2_train/v2_train"
 
   sudoku_fine_tune:
     epochs: 20
-    learning_rate: 0.0001
+    learning_rate: 0.0003
     weight_decay: 0.0001
     early_stopping_patience: 3
     lr_scheduler_patience: 2
     lr_scheduler_factor: 0.5
+    replay_enabled: false
+    freeze_batchnorm: false
 
   augmentation:
     enabled: true

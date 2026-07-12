@@ -17,7 +17,7 @@ from phases.phase_03_cell_extraction.cell_extraction import extract_cells
 from phases.phase_04_digit_recognition.src.classifier import PyTorchDigitClassifier
 
 
-IMAGE_PATH = "storage/sudoku/raw/v1_test/v1_test/image115.jpg"
+IMAGE_PATH = "storage/sudoku/raw/v1_test/v1_test/image72.jpg"
 DEBUG_DIR = Path("storage/sudoku/debug_row_check")
 
 # ردیف دلخواه برای نمایش، عدد انسانی از 1 تا 9
@@ -60,11 +60,12 @@ def main():
 
     grid_result = find_sudoku_grid(
         preprocessed_binary=preprocessed["threshold"],
+        original_bgr=preprocessed["original"],
         output_dir=DEBUG_DIR,
     )
 
     cells_result = extract_cells(
-        warped_binary=grid_result["warped_binary"],
+        warped_binary=grid_result["warped"],
         output_dir=DEBUG_DIR,
     )
 
@@ -115,7 +116,7 @@ def main():
 
     # نمایش کل تخته‌ی warp شده
     plt.figure(figsize=(6, 6))
-    plt.imshow(grid_result["warped_binary"], cmap="gray")
+    plt.imshow(grid_result["warped"], cmap="gray")
     plt.title("Warped binary board")
     plt.axis("off")
     plt.show()

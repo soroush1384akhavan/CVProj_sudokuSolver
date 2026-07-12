@@ -60,6 +60,7 @@ def load_and_solve(
 
         grid_result = find_sudoku_grid(
             preprocessed_binary=preprocessed["threshold"],
+            original_bgr=preprocessed["original"],
             output_dir=image_output_dir,
         )
 
@@ -68,7 +69,7 @@ def load_and_solve(
             print(f"⚠️  Grid not found (fallback used): {path.name}")
 
         cells_result = extract_cells(
-            warped_binary=grid_result["warped_binary"],
+            warped_binary=grid_result["warped"],
             output_dir=image_output_dir,
         )
 

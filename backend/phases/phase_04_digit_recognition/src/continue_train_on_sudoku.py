@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import types
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,7 @@ from torch.utils.data import ConcatDataset, DataLoader, Subset
 
 from app.config import settings
 
+from .dataset import build_digit_dataloaders
 from .dataset import DigitTransform, get_phase4_config
 from .datasets.fromsoduko.charls_soduku_dataloader import DatSudokuCellDataset
 from .datasets.fromsoduko.generated_dataloader import GeneratedSudokuCellDataset
@@ -31,11 +33,30 @@ def _resolve_path(value: str | Path) -> Path:
     return settings.resolve_path(str(value))
 
 
-# اصلاح اول: اضافه کردن فلگ کنترل آگمنتیشن به تابع ساخت دیتابیس
+def freeze_batchnorm(model: nn.Module) -> nn.Module:
+
+    for module in model.modules():
+        if isinstance(module, nn.BatchNorm2d):
+            module.eval()
+            for param in module.parameters():
+                param.requires_grad = False
+
+    def train_with_frozen_bn(self, mode: bool = True):
+        nn.Module.train(self, mode)
+        if mode:
+            for module in self.modules():
+                if isinstance(module, nn.BatchNorm2d):
+                    module.eval()
+        return self
+
+    model.train = types.MethodType(train_with_frozen_bn, model)
+    return model
+
+
 def _build_source_datasets(
     transform: DigitTransform,
     sudoku_cfg: dict[str, Any],
-    apply_safe_augmentation: bool = False,  # اضافه شدن پارامتر جدید
+    apply_safe_augmentation: bool = False,
 ) -> tuple[list, dict[str, int]]:
     cache_root = _resolve_path(sudoku_cfg.get("cache_dir", "storage/sudoku/cell_cache"))
     include_empty_cells = bool(sudoku_cfg.get("include_empty_cells", False))
@@ -52,7 +73,7 @@ def _build_source_datasets(
             include_empty_cells=include_empty_cells,
             transform=transform,
             refresh_cache=refresh_cache,
-            apply_safe_augmentation=apply_safe_augmentation,  # پاس دادن فلگ به کلاس اول
+            apply_safe_augmentation=apply_safe_augmentation,
         )
         datasets.append(dataset)
         summary[f"generated:{root_path.name}"] = len(dataset)
@@ -65,7 +86,7 @@ def _build_source_datasets(
             include_empty_cells=include_empty_cells,
             transform=transform,
             refresh_cache=refresh_cache,
-            apply_safe_augmentation=apply_safe_augmentation,  # پاس دادن فلگ به کلاس دوم
+            apply_safe_augmentation=apply_safe_augmentation,
         )
         datasets.append(dataset)
         summary[f"dat:{root_path.name}"] = len(dataset)
@@ -76,6 +97,29 @@ def _build_source_datasets(
     return datasets, summary
 
 
+def _build_replay_subset(n_new_samples: int, replay_ratio: float, seed: int):
+    """
+    یک زیرمجموعه‌ی تصادفی از دیتاست اصلی (Hoda + MNIST + Chars74K) رو برمی‌گردونه
+    تا در حین fine-tuning کنار داده‌ی جدید (سودوکو) قاطی بشه.
+
+    این تکنیک "replay" یا "rehearsal" نامیده می‌شه: با یادآوری مداوم نمونه‌هایی
+    از دامنه‌ی قدیمی در حین یادگیری دامنه‌ی جدید، جلوی فراموشی فاجعه‌بار گرفته می‌شه
+    (مکمل freeze_batchnorm، نه جایگزینش).
+    """
+    original_train_loader, _, _ = build_digit_dataloaders()
+    original_dataset = original_train_loader.dataset
+
+    n_replay = max(1, int(n_new_samples * replay_ratio))
+    n_replay = min(n_replay, len(original_dataset))
+
+    replay_indices = torch.randperm(
+        len(original_dataset),
+        generator=torch.Generator().manual_seed(seed),
+    )[:n_replay].tolist()
+
+    return Subset(original_dataset, replay_indices), n_replay
+
+
 def build_sudoku_finetune_loaders():
     phase_cfg = get_phase4_config()
     model_cfg = phase_cfg.get("model", {})
@@ -83,6 +127,7 @@ def build_sudoku_finetune_loaders():
     data_cfg = phase_cfg.get("data", {})
     aug_cfg = phase_cfg.get("augmentation", {})
     sudoku_cfg = data_cfg.get("sudoku_cells", {})
+    fine_tune_cfg = phase_cfg.get("sudoku_fine_tune", {})
 
     image_size = int(model_cfg.get("image_size", 28))
     batch_size = int(train_cfg.get("batch_size", 64))
@@ -90,6 +135,9 @@ def build_sudoku_finetune_loaders():
     validation_split = float(sudoku_cfg.get("validation_split", 0.1))
     seed = int(train_cfg.get("seed", 42))
     augmentation_enabled = bool(aug_cfg.get("enabled", True))
+
+    replay_enabled = bool(fine_tune_cfg.get("replay_enabled", True))
+    replay_ratio = float(fine_tune_cfg.get("replay_ratio", 0.15))
 
     train_transform = DigitTransform(
         size=image_size,
@@ -102,16 +150,20 @@ def build_sudoku_finetune_loaders():
         augment_config=aug_cfg,
     )
 
-    # اصلاح دوم: ساخت جداگانه منابع دیتابیس برای اینکه آگمنتیشن فقط به کدهای Train اعمال شود
     train_sources, summary = _build_source_datasets(
         train_transform, sudoku_cfg, apply_safe_augmentation=augmentation_enabled
     )
     eval_sources, _ = _build_source_datasets(
-        eval_transform, sudoku_cfg, apply_safe_augmentation=False  # داده‌های ارزیابی هرگز نباید آگمنت شوند
+        eval_transform, sudoku_cfg, apply_safe_augmentation=False
     )
 
     train_full = ConcatDataset(train_sources)
     eval_full = ConcatDataset(eval_sources)
+
+    if replay_enabled:
+        replay_subset, n_replay = _build_replay_subset(len(train_full), replay_ratio, seed)
+        train_full = ConcatDataset([train_full, replay_subset])
+        summary["replay:original_datasets"] = n_replay
 
     n_total = len(train_full)
 
@@ -128,17 +180,16 @@ def build_sudoku_finetune_loaders():
     ).tolist()
 
     train_indices = indices[:n_train]
-    val_indices = indices[n_train:]
+    val_indices = [i for i in indices[n_train:] if i < len(eval_full)]
 
-    # اصلاح سوم: تخصیص صحیح Subsetها از دیتابیس‌های مربوط به خودشان
     train_loader = DataLoader(
-        Subset(train_full, train_indices),  # استفاده از منبع شامل آگمنتیشن امن
+        Subset(train_full, train_indices),
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
     )
     val_loader = DataLoader(
-        Subset(eval_full, val_indices),    # استفاده از منبع تمیز و بدون تغییر برای تست واقعی
+        Subset(eval_full, val_indices) if val_indices else Subset(eval_full, list(range(min(1, len(eval_full))))),
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
@@ -173,6 +224,10 @@ def main() -> None:
 
     model.load_state_dict(torch.load(checkpoint_path, map_location=device, weights_only=True))
 
+    freeze_bn = bool(fine_tune_cfg.get("freeze_batchnorm", True))
+    if freeze_bn:
+        model = freeze_batchnorm(model)
+
     epochs = int(fine_tune_cfg.get("epochs", 5))
     learning_rate = float(fine_tune_cfg.get("learning_rate", 0.0001))
     weight_decay = float(fine_tune_cfg.get("weight_decay", train_cfg.get("weight_decay", 0.0001)))
@@ -192,6 +247,7 @@ def main() -> None:
         "augmentation": aug_cfg,
         "source_checkpoint_path": str(checkpoint_path),
         "source_summary": source_summary,
+        "freeze_batchnorm": freeze_bn,
         "seed": seed,
         "device": str(device),
     }
@@ -199,6 +255,7 @@ def main() -> None:
 
     print(f"Using device: {device}")
     print(f"Loaded checkpoint: {checkpoint_path}")
+    print(f"BatchNorm frozen: {freeze_bn}")
     print(f"Run directory: {run_dir}")
     print("Sudoku fine-tune samples:")
     for name, count in source_summary.items():
@@ -232,6 +289,7 @@ def main() -> None:
         "epochs_ran": len(history["train_loss"]),
         "learning_rate": learning_rate,
         "weight_decay": weight_decay,
+        "freeze_batchnorm": freeze_bn,
         "source_summary": source_summary,
         "history": history,
         "validation_loss": val_loss,

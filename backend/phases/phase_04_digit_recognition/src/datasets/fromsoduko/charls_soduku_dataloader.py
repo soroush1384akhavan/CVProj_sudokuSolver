@@ -8,7 +8,6 @@ import numpy as np
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
-# اضافه کردن کتابخانه استاندارد برای ترنسفورم‌های پایتورچ
 from torchvision import transforms
 
 BACKEND_ROOT = Path(__file__).resolve().parents[5]
@@ -103,7 +102,7 @@ class DatSudokuCellDataset(Dataset):
             image_bgr = imread_color(image_path)
             phase1 = preprocess_image(image_bgr, output_dir)
             phase2 = find_sudoku_grid(phase1["threshold"], output_dir)  # type: ignore[arg-type]
-            extract_cells(phase2["warped_binary"], output_dir)  # type: ignore[arg-type]
+            extract_cells(phase2["warped"], output_dir)  # type: ignore[arg-type]
 
         return cell_paths
 

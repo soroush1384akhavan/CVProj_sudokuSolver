@@ -824,12 +824,12 @@ def make_image_variant(img, severity=1.6, always_add_noise=True):
             img = add_gaussian_noise(img, sigma=random.uniform(8.0, 20.0) * severity)
 
     # salt pepper noise
-    if random.random() < 0.55:
-        img = add_salt_pepper_noise(
-            img,
-            amount=random.uniform(0.003, 0.014) * severity
-        )
-
+    # salt pepper noise - کنترل مستقل، جدا از severity کلی
+        if random.random() < 0.35:
+            img = add_salt_pepper_noise(
+                img,
+                amount=random.uniform(0.001, 0.004)
+            )
     # jpeg artifacts
     if random.random() < 0.65:
         img = add_jpeg_artifact(
@@ -998,7 +998,7 @@ def generate_dataset(
             puzzle_flat = flatten_board(puzzle)
             solution_flat = flatten_board(solution)
 
-            for style in ["en", "fa"]:
+            for style in ["en"]:
                 base_name = f"sudoku_{idx:05d}_{style}"
 
                 original_path = images_original_dir / f"{base_name}.png"

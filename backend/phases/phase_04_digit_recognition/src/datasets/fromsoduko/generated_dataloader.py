@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import logging
 import sys
 from pathlib import Path
 from typing import Any
@@ -9,7 +10,6 @@ import numpy as np
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
-# اضافه کردن کتابخانه استاندارد برای آگمنتیشن محتاطانه
 from torchvision import transforms
 
 BACKEND_ROOT = Path(__file__).resolve().parents[5]
@@ -22,6 +22,8 @@ from phases.phase_01_preprocessing.preprocess import preprocess_image
 from phases.phase_02_grid_detection.grid_detection import find_sudoku_grid
 from phases.phase_03_cell_extraction.cell_extraction import extract_cells
 
+logger = logging.getLogger(__name__)
+
 
 class GeneratedSudokuCellDataset(Dataset):
     def __init__(
@@ -32,7 +34,8 @@ class GeneratedSudokuCellDataset(Dataset):
         transform: Any | None = None,
         refresh_cache: bool = False,
         label_field: str = "puzzle",
-        apply_safe_augmentation: bool = False,  # فلگ جدید برای فعال‌سازی آگمنتیشن امن داخلی
+        apply_safe_augmentation: bool = False,
+        skip_failed_grid_detection: bool = True,
     ) -> None:
         self.root_dir = Path(root_dir)
         self.labels_path = self.root_dir / "labels.csv"
@@ -42,26 +45,32 @@ class GeneratedSudokuCellDataset(Dataset):
         self.refresh_cache = refresh_cache
         self.label_field = label_field
         self.apply_safe_augmentation = apply_safe_augmentation
+        self.skip_failed_grid_detection = skip_failed_grid_detection
 
         if not self.labels_path.is_file():
             raise FileNotFoundError(f"Generated Sudoku labels.csv not found: {self.labels_path}")
 
-        # تعریف آگمنتیشن بسیار محتاطانه مخصوص اعداد
-        # این ترنسفورم فقط چرخش‌های جزیی دست‌اندازها و جابجایی‌های خیلی کم را شبیه‌سازی می‌کند
         self.safe_augment = transforms.Compose([
-            transforms.RandomRotation(degrees=(-7, 7)),  # حداکثر ۷ درجه چرخش (برای جلوگیری از تبدیل ۶ به ۹)
+            transforms.RandomRotation(degrees=(-7, 7)),
             transforms.RandomAffine(
-                degrees=0, 
-                translate=(0.05, 0.05),  # حداکثر ۵ درصد جابجایی افقی و عمودی عدد در خانه سودوکو
-                scale=(0.95, 1.05)       # بزرگنمایی یا کوچکنمایی بسیار نامحسوس
+                degrees=0,
+                translate=(0.05, 0.05),
+                scale=(0.95, 1.05),
             ),
         ])
 
         self.samples: list[tuple[Path, int]] = []
+        self.skipped_images = 0
         self._build_index()
 
         if not self.samples:
             raise ValueError(f"No generated Sudoku cells collected from: {self.root_dir}")
+
+        if self.skipped_images > 0:
+            logger.warning(
+                f"Skipped {self.skipped_images} image(s) due to failed grid detection "
+                f"(dataset: {self.root_dir})."
+            )
 
     def _build_index(self) -> None:
         with self.labels_path.open("r", encoding="utf-8", newline="") as labels_file:
@@ -70,7 +79,12 @@ class GeneratedSudokuCellDataset(Dataset):
             for row in reader:
                 image_path = self.root_dir / row["filename"].replace("\\", "/")
                 labels = self._parse_flat_board(row[self.label_field])
-                cell_paths = self._ensure_extracted_cells(image_path)
+
+                cell_paths, grid_found = self._ensure_extracted_cells(image_path)
+
+                if self.skip_failed_grid_detection and not grid_found:
+                    self.skipped_images += 1
+                    continue
 
                 for index, label in enumerate(labels):
                     if label == 0 and not self.include_empty_cells:
@@ -87,7 +101,7 @@ class GeneratedSudokuCellDataset(Dataset):
 
         return digits
 
-    def _ensure_extracted_cells(self, image_path: Path) -> list[Path]:
+    def _ensure_extracted_cells(self, image_path: Path) -> tuple[list[Path], bool]:
         if not image_path.is_file():
             raise FileNotFoundError(f"Generated Sudoku image not found: {image_path}")
 
@@ -96,13 +110,33 @@ class GeneratedSudokuCellDataset(Dataset):
         cells_dir = output_dir / "cells"
         cell_paths = [cells_dir / f"cell_{index:02d}.png" for index in range(81)]
 
-        if self.refresh_cache or not all(path.is_file() for path in cell_paths):
-            image_bgr = imread_color(image_path)
-            phase1 = preprocess_image(image_bgr, output_dir)
-            phase2 = find_sudoku_grid(phase1["threshold"], output_dir)  # type: ignore[arg-type]
-            extract_cells(phase2["warped_binary"], output_dir)  # type: ignore[arg-type]
+        grid_found_flag_path = output_dir / "grid_found.txt"
 
-        return cell_paths
+        cache_complete = self.refresh_cache is False and all(path.is_file() for path in cell_paths)
+
+        if cache_complete and grid_found_flag_path.is_file():
+            grid_found = grid_found_flag_path.read_text().strip() == "True"
+            return cell_paths, grid_found
+
+        image_bgr = imread_color(image_path)
+
+        preprocessed = preprocess_image(image_bgr, output_dir)
+
+        grid_result = find_sudoku_grid(
+            original_bgr=preprocessed["original"],
+            preprocessed_binary=preprocessed["threshold"],
+            output_dir=output_dir,
+        )
+
+        extract_cells(
+            warped_binary=grid_result["warped"],
+            output_dir=output_dir,
+        )
+
+        grid_found = bool(grid_result["found"])
+        grid_found_flag_path.write_text(str(grid_found))
+
+        return cell_paths, grid_found
 
     def __len__(self) -> int:
         return len(self.samples)
@@ -111,7 +145,6 @@ class GeneratedSudokuCellDataset(Dataset):
         image_path, label = self.samples[index]
         image = Image.open(image_path).convert("L")
 
-        # اگر قابلیت آگمنتیشن امن فعال بود و ترنسفورم خارجی نداشتیم (یا مکمل آن)
         if self.apply_safe_augmentation:
             image = self.safe_augment(image)
 

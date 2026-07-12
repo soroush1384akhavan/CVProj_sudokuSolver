@@ -174,24 +174,31 @@ def _draw_detected_corners(binary: np.ndarray, corners: np.ndarray) -> np.ndarra
 
 
 def find_sudoku_grid(
+    original_bgr: np.ndarray,
     preprocessed_binary: np.ndarray,
     output_dir: Path,
 ) -> dict[str, np.ndarray | bool | str]:
     """
-    Detect Sudoku grid from a preprocessed binary image.
+    Detect Sudoku grid from a preprocessed binary image, and warp both the
+    binary image (for grid-line based logic) and the original color image
+    (for actual cell content used downstream).
 
     Input:
+        original_bgr:
+            Original color image (same pre-crop coordinate space as
+            preprocessed_binary), used to produce a real color warped board.
+
         preprocessed_binary:
             Single-channel binary image from phase 01 preprocessing.
             Expected format: uint8, 0/255, grid/foreground white.
 
     Output:
         warped_binary:
-            Perspective-corrected binary board.
+            Perspective-corrected binary board (for grid/line analysis).
 
         warped:
-            BGR-compatible version of warped_binary for old downstream code
-            that still expects warped_bgr.
+            Perspective-corrected REAL color board (from original_bgr),
+            for cell extraction / digit recognition downstream.
     """
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -257,26 +264,27 @@ def find_sudoku_grid(
         corners = fallback_corners(binary)
         matrix = cv2.getPerspectiveTransform(corners, dst)
 
+    # warp نسخه‌ی باینری (برای تحلیل خطوط جدول)
     warped_binary = cv2.warpPerspective(
         binary,
         matrix,
         (board_size, board_size),
         flags=cv2.INTER_NEAREST,
     )
+    _, warped_binary = cv2.threshold(warped_binary, 127, 255, cv2.THRESH_BINARY)
 
-    _, warped_binary = cv2.threshold(
-        warped_binary,
-        127,
-        255,
-        cv2.THRESH_BINARY,
+    # warp نسخه‌ی رنگی واقعی (همون ماتریس، ولی روی original_bgr) — این خروجی اصلیه که
+    # extract_cells/clean_cell باید ازش استفاده کنن، نه warped_binary.
+    warped_bgr = cv2.warpPerspective(
+        original_bgr,
+        matrix,
+        (board_size, board_size),
+        flags=cv2.INTER_LINEAR,
     )
 
     inverse_matrix = np.linalg.inv(matrix)
 
     contour_debug = _draw_detected_corners(binary, corners)
-
-    # برای سازگاری با کدهای قبلی که warped_bgr می‌خواستند
-    warped_bgr = cv2.cvtColor(warped_binary, cv2.COLOR_GRAY2BGR)
 
     save_image(output_dir / "05_detected_contour.png", contour_debug)
     save_image(output_dir / "06_warped_board_binary.png", warped_binary)
@@ -288,10 +296,10 @@ def find_sudoku_grid(
         "matrix": matrix,
         "inverse_matrix": inverse_matrix,
 
-        # خروجی اصلی درست
+        # برای تحلیل‌های مبتنی بر خط جدول (اگه جایی لازم شد)
         "warped_binary": warped_binary,
 
-        # برای compatibility با فاز بعدی اگر هنوز اسمش warped_bgr است
+        # خروجی اصلی رنگی واقعی، برای extract_cells / digit recognition
         "warped": warped_bgr,
 
         "contour_debug_path": "05_detected_contour.png",
