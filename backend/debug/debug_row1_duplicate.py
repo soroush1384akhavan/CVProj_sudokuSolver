@@ -66,6 +66,7 @@ def main():
 
     cells_result = extract_cells(
         warped_bgr=grid_result["warped"],
+        warped_binary=grid_result["warped_binary"],
         output_dir=DEBUG_DIR,
     )
 

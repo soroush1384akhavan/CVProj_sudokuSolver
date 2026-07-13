@@ -155,6 +155,7 @@ class DatSudokuCellDataset(Dataset):
 
             extract_cells(
                 warped_bgr=grid_result["warped"],
+                warped_binary=grid_result["warped_binary"],
                 output_dir=output_dir,
             )
 
