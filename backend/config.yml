@@ -24,18 +24,18 @@ preprocessing:
   max_side: 1400
   gaussian_blur_kernel: 7
   adaptive_threshold:
-    block_size: 11
-    c: 1
+    block_size: 57
+    c: 3
 
 grid_detection:
   max_contours_to_check: 20
   min_contour_area: 10000
   approx_epsilon_ratio: 0.1
-  board_size: 450
+  board_size: 252
 
 cell_extraction:
-  margin_ratio: 0.14
-  empty_pixel_ratio_threshold: 0.1
+  margin_ratio: 0.08
+  empty_pixel_ratio_threshold: 0.05
   digit_input_size: 28
   montage_cell_size: 40
   save_cells: true
@@ -77,6 +77,7 @@ digit_recognition:
     checkpoint_name: digit_cnn.pth
 
   data:
+    languages: ["en"]
     validation_split: 0.1
     include_zero_digit: false
     num_workers: 0
@@ -101,17 +102,18 @@ digit_recognition:
       generated_roots:
         - "storage/sudoku/synthetic/sudoku_medium_20260712_130818_411923_seed_274979083"
       dat_roots:
-        - "storage/sudoku/raw/v2_train/v2_train"
+      - "storage/sudoku/raw/v1_training/v1_training"
+      - "storage/sudoku/raw/v2_train/v2_train"
 
   sudoku_fine_tune:
     epochs: 20
     learning_rate: 0.0003
     weight_decay: 0.0001
-    early_stopping_patience: 3
+    early_stopping_patience: 10
     lr_scheduler_patience: 2
     lr_scheduler_factor: 0.5
-    replay_enabled: false
-    freeze_batchnorm: false
+    replay_enabled: true
+    freeze_batchnorm: true
 
   augmentation:
     enabled: true

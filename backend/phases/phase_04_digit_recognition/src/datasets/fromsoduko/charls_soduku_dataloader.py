@@ -29,25 +29,30 @@ class DatSudokuCellDataset(Dataset):
         include_empty_cells: bool = False,
         transform: Any | None = None,
         refresh_cache: bool = False,
-        apply_safe_augmentation: bool = False,  # فلگ فعال‌سازی آگمنتیشن امن داخلی
+        apply_safe_augmentation: bool = False,
     ) -> None:
         self.root_dir = Path(root_dir)
-        self.cache_dir = Path(cache_dir) if cache_dir is not None else self.root_dir / "extracted_cells"
+        self.cache_dir = (
+            Path(cache_dir)
+            if cache_dir is not None
+            else self.root_dir / "extracted_cells"
+        )
         self.include_empty_cells = include_empty_cells
         self.transform = transform
         self.refresh_cache = refresh_cache
         self.apply_safe_augmentation = apply_safe_augmentation
 
         if not self.root_dir.is_dir():
-            raise FileNotFoundError(f"DAT Sudoku root folder not found: {self.root_dir}")
+            raise FileNotFoundError(
+                f"DAT Sudoku root folder not found: {self.root_dir}"
+            )
 
-        # تنظیمات ترنسفورم فوق‌العاده محتاطانه مخصوص اعداد سودوکو
         self.safe_augment = transforms.Compose([
-            transforms.RandomRotation(degrees=(-7, 7)),  # چرخش بسیار نامحسوس (جلوگیری از تبدیل ۶ به ۹)
+            transforms.RandomRotation(degrees=(-7, 7)),
             transforms.RandomAffine(
-                degrees=0, 
-                translate=(0.04, 0.04),  # حداکثر ۴ درصد جابجایی افقی و عمودی عدد در خانه
-                scale=(0.96, 1.04)       # بزرگنمایی یا کوچکنمایی بسیار جزیی برای شبیه‌سازی فاصله دوربین
+                degrees=0,
+                translate=(0.04, 0.04),
+                scale=(0.96, 1.04),
             ),
         ])
 
@@ -55,7 +60,9 @@ class DatSudokuCellDataset(Dataset):
         self._build_index()
 
         if not self.samples:
-            raise ValueError(f"No DAT Sudoku cells collected from: {self.root_dir}")
+            raise ValueError(
+                f"No DAT Sudoku cells collected from: {self.root_dir}"
+            )
 
     def _build_index(self) -> None:
         for dat_path in sorted(self.root_dir.glob("*.dat")):
@@ -71,38 +78,85 @@ class DatSudokuCellDataset(Dataset):
                 if label == 0 and not self.include_empty_cells:
                     continue
 
-                self.samples.append((cell_paths[index], label))
+                cell_path = cell_paths[index]
+
+                # اگر تمام پیکسل‌های سلول صفر باشند، وارد آموزش نشود
+                cell_array = np.array(
+                    Image.open(cell_path).convert("L")
+                )
+
+                if np.all(cell_array == 0):
+                    print(
+                        f"Skipped all-zero cell: "
+                        f"path={cell_path}, label={label}"
+                    )
+                    continue
+
+                self.samples.append((cell_path, label))
 
     @staticmethod
     def _read_dat_board(dat_path: Path) -> list[int]:
-        lines = dat_path.read_text(encoding="utf-8").splitlines()
+        lines = dat_path.read_text(
+            encoding="utf-8"
+        ).splitlines()
+
         board_lines = lines[2:11]
 
         if len(board_lines) != 9:
-            raise ValueError(f"DAT file must contain 9 board rows: {dat_path}")
+            raise ValueError(
+                f"DAT file must contain 9 board rows: {dat_path}"
+            )
 
         labels: list[int] = []
 
         for line in board_lines:
-            row = [int(value) for value in line.split()]
+            row = [
+                int(value)
+                for value in line.split()
+            ]
 
             if len(row) != 9:
-                raise ValueError(f"DAT board row must contain 9 values: {dat_path}")
+                raise ValueError(
+                    f"DAT board row must contain 9 values: {dat_path}"
+                )
 
             labels.extend(row)
 
         return labels
 
-    def _ensure_extracted_cells(self, image_path: Path) -> list[Path]:
+    def _ensure_extracted_cells(
+        self,
+        image_path: Path,
+    ) -> list[Path]:
         output_dir = self.cache_dir / image_path.stem
         cells_dir = output_dir / "cells"
-        cell_paths = [cells_dir / f"cell_{index:02d}.png" for index in range(81)]
 
-        if self.refresh_cache or not all(path.is_file() for path in cell_paths):
+        cell_paths = [
+            cells_dir / f"cell_{index:02d}.png"
+            for index in range(81)
+        ]
+
+        if (
+            self.refresh_cache
+            or not all(path.is_file() for path in cell_paths)
+        ):
             image_bgr = imread_color(image_path)
-            phase1 = preprocess_image(image_bgr, output_dir)
-            phase2 = find_sudoku_grid(phase1["threshold"], output_dir)  # type: ignore[arg-type]
-            extract_cells(phase2["warped"], output_dir)  # type: ignore[arg-type]
+
+            preprocessed = preprocess_image(
+                image_bgr,
+                output_dir,
+            )
+
+            grid_result = find_sudoku_grid(
+                original_bgr=preprocessed["original"],
+                preprocessed_binary=preprocessed["threshold"],
+                output_dir=output_dir,
+            )
+
+            extract_cells(
+                warped_bgr=grid_result["warped"],
+                output_dir=output_dir,
+            )
 
         return cell_paths
 
@@ -113,15 +167,19 @@ class DatSudokuCellDataset(Dataset):
         image_path, label = self.samples[index]
         image = Image.open(image_path).convert("L")
 
-        # اعمال آگمنتیشن امن در صورت فعال بودن فلگ مربوطه
         if self.apply_safe_augmentation:
             image = self.safe_augment(image)
 
         if self.transform is not None:
             image = self.transform(image)
         else:
-            image_array = np.array(image, dtype=np.float32) / 255.0
-            image = torch.from_numpy(image_array).unsqueeze(0)
+            image_array = (
+                np.array(image, dtype=np.float32) / 255.0
+            )
+
+            image = torch.from_numpy(
+                image_array
+            ).unsqueeze(0)
 
         return image, label
 

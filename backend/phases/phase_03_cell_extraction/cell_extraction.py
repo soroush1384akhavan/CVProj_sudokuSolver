@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 import cv2
 import numpy as np
 
@@ -8,152 +9,381 @@ from app.config import settings
 from common.images import save_image
 
 
-def is_cell_empty(binary: np.ndarray, min_ink_ratio: float | None = None) -> bool:
-    min_ink_ratio = float(settings.get("cell_extraction.empty_pixel_ratio_threshold", 0.035)) if min_ink_ratio is None else min_ink_ratio
-    ratio = float(np.count_nonzero(binary)) / float(binary.size)
-    return ratio < min_ink_ratio
+def is_cell_empty(
+    inverted_gray: np.ndarray,
+    min_ink_ratio: float | None = None,
+    margin_ratio: float | None = None,
+) -> bool:
+    """
+    تشخیص خالی‌بودن سلول grayscale اینورت‌شده.
 
+    تصویر تغییر داده یا binary نمی‌شود. فقط بررسی می‌کنیم چه نسبتی
+    از پیکسل‌های ناحیه‌ی داخلی، شدت قابل‌توجهی دارند.
 
-def sharpen(image: np.ndarray, amount: float = 1.5, sigma: float = 3.0) -> np.ndarray:
-    blurred = cv2.GaussianBlur(image, (0, 0), sigma)
-    sharpened = cv2.addWeighted(image, 1 + amount, blurred, -amount, 0)
-    return sharpened
+    در تصویر اینورت‌شده:
+    - پس‌زمینه تقریباً سیاه است.
+    - رقم روشن است.
+    """
+    if inverted_gray.ndim != 2:
+        raise ValueError(
+            "inverted_gray must be a single-channel image"
+        )
+
+    min_ink_ratio = (
+        float(
+            settings.get(
+                "cell_extraction.empty_pixel_ratio_threshold",
+                0.025,
+            )
+        )
+        if min_ink_ratio is None
+        else float(min_ink_ratio)
+    )
+
+    margin_ratio = (
+        float(
+            settings.get(
+                "cell_extraction.margin_ratio",
+                0.10,
+            )
+        )
+        if margin_ratio is None
+        else float(margin_ratio)
+    )
+
+    intensity_threshold = int(
+        settings.get(
+            "cell_extraction.empty_intensity_threshold",
+            35,
+        )
+    )
+
+    height, width = inverted_gray.shape
+
+    margin_y = int(round(height * margin_ratio))
+    margin_x = int(round(width * margin_ratio))
+
+    y1 = margin_y
+    y2 = height - margin_y
+    x1 = margin_x
+    x2 = width - margin_x
+
+    if y2 <= y1 or x2 <= x1:
+        return True
+
+    inner = inverted_gray[y1:y2, x1:x2]
+
+    if inner.size == 0:
+        return True
+
+    # فقط برای تشخیص خالی‌بودن یک mask منطقی می‌سازیم.
+    # تصویر خروجی هیچ‌وقت binary نمی‌شود.
+    significant_pixels = inner >= intensity_threshold
+
+    ink_ratio = float(
+        np.count_nonzero(significant_pixels)
+        / inner.size
+    )
+
+    return ink_ratio < min_ink_ratio
 
 
 def clean_cell(
-    cell_bgr: np.ndarray,
+    cell: np.ndarray,
     margin_ratio: float | None = None,
     output_size: int | None = None,
     min_area_ratio: float | None = None,
-    sharpen_amount: float | None = None,
 ) -> tuple[np.ndarray, bool]:
-    
-    margin_ratio = float(settings.get("cell_extraction.margin_ratio", 0.14)) if margin_ratio is None else margin_ratio
-    output_size = int(settings.get("cell_extraction.digit_input_size", 28)) if output_size is None else output_size
-    min_area_ratio = float(settings.get("cell_extraction.min_digit_area_ratio", 0.03)) if min_area_ratio is None else min_area_ratio
+    """
+    سلول را فقط grayscale و invert می‌کند.
 
-    h, w = cell_bgr.shape[:2]
-    mx = int(w * margin_ratio)
-    my = int(h * margin_ratio)
-    cropped = cell_bgr[my : h - my, mx : w - mx]
+    هیچ‌کدام از عملیات زیر انجام نمی‌شوند:
+    - adaptive threshold
+    - binary threshold
+    - connected components
+    - morphology
+    - crop
+    - resize
+    - center کردن رقم
+    """
+    del output_size
+    del min_area_ratio
 
-    if cropped.ndim == 3:
-        gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
+    if cell.ndim == 3:
+        gray = cv2.cvtColor(
+            cell,
+            cv2.COLOR_BGR2GRAY,
+        )
+    elif cell.ndim == 2:
+        gray = cell.copy()
     else:
-        gray = cropped
+        raise ValueError(
+            f"Unsupported cell shape: {cell.shape}"
+        )
 
-    final_binary = cv2.adaptiveThreshold(
-        gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, 3
+    expected_size = int(
+        settings.get(
+            "cell_extraction.digit_input_size",
+            28,
+        )
     )
 
-    close_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    final_binary_closed = cv2.morphologyEx(final_binary, cv2.MORPH_CLOSE, close_kernel, iterations=2)
+    if gray.shape != (
+        expected_size,
+        expected_size,
+    ):
+        raise ValueError(
+            f"Expected cell size "
+            f"{expected_size}x{expected_size}, "
+            f"but received "
+            f"{gray.shape[1]}x{gray.shape[0]}. "
+            f"Make sure grid_detection.board_size is "
+            f"{expected_size * 9}."
+        )
 
-    ch, cw = final_binary_closed.shape[:2]
-    min_area = min_area_ratio * (ch * cw)
+    # فقط inversion؛ شدت‌های خاکستری حفظ می‌شوند.
+    inverted_gray = cv2.bitwise_not(gray)
 
-    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(final_binary_closed, connectivity=8)
+    empty = is_cell_empty(
+        inverted_gray=inverted_gray,
+        margin_ratio=margin_ratio,
+    )
 
-    best_label = None
-    best_area = 0
-    for label in range(1, num_labels):
-        area = stats[label, cv2.CC_STAT_AREA]
-        if area >= min_area and area > best_area:
-            best_area = area
-            best_label = label
+    if empty:
+        return (
+            np.zeros_like(
+                inverted_gray,
+                dtype=np.uint8,
+            ),
+            True,
+        )
 
-    if best_label is None:
-        return np.zeros((output_size, output_size), dtype=np.uint8), True
-
-    # 1. استخراج ماسک فقط برای خودِ عدد (بدون نویزهای اطراف)
-    component_mask = np.where(labels == best_label, 255, 0).astype(np.uint8)
-    
-    if is_cell_empty(component_mask):
-        return np.zeros((output_size, output_size), dtype=np.uint8), True
-
-    # 2. پیدا کردن باندینگ باکس دقیقِ عدد
-    x, y, bw, bh = stats[best_label, cv2.CC_STAT_LEFT], stats[best_label, cv2.CC_STAT_TOP], \
-                   stats[best_label, cv2.CC_STAT_WIDTH], stats[best_label, cv2.CC_STAT_HEIGHT]
-    
-    # برش زدن خود عدد از روی ماسک تمیز شده
-    digit_crop = component_mask[y:y+bh, x:x+bw]
-
-    # 3. قرار دادن عدد در مرکز یک بوم مربعی جدید (Centering)
-    # ایجاد یک بوم مربع بر اساس بزرگترین ضلع عدد
-    max_dim = max(bw, bh)
-    square_digit = np.zeros((max_dim, max_dim), dtype=np.uint8)
-    
-    # چسباندن عدد در مرکز مربع
-    dx = (max_dim - bw) // 2
-    dy = (max_dim - bh) // 2
-    square_digit[dy:dy+bh, dx:dx+bw] = digit_crop
-
-    # 4. اضافه کردن یک مارجین/پدینگ امن دور عدد (مثلاً ۴ پیکسل) قبل از ری‌سایز نهایی
-    # این کار باعث می‌شود عدد کاملاً شبیه MNIST یا داده‌های استاندارد سنتر شده شود.
-    pad = 4
-    padded_digit = cv2.copyMakeBorder(square_digit, pad, pad, pad, pad, cv2.BORDER_CONSTANT, value=0)
-
-    # 5. ری‌سایز نهایی به سایز ورودی مدل (مثلا 28x28)
-    resized = cv2.resize(padded_digit, (output_size, output_size), interpolation=cv2.INTER_AREA)
-
-    return resized, False
+    return inverted_gray, False
 
 
-def make_montage(clean_cells: list[np.ndarray], cell_size: int | None = None) -> np.ndarray:
-    cell_size = int(settings.get("cell_extraction.montage_cell_size", 40)) if cell_size is None else cell_size
+def make_montage(
+    cells: list[np.ndarray],
+    cell_size: int | None = None,
+) -> np.ndarray:
+    del cell_size
 
-    montage = np.ones((9 * cell_size, 9 * cell_size), dtype=np.uint8) * 255
+    if len(cells) != 81:
+        raise ValueError(
+            f"Expected 81 cells, received {len(cells)}"
+        )
 
-    for idx, cell in enumerate(clean_cells):
-        r, c = divmod(idx, 9)
-        resized = cv2.resize(cell, (cell_size, cell_size), interpolation=cv2.INTER_NEAREST)
-        montage[r * cell_size : (r + 1) * cell_size, c * cell_size : (c + 1) * cell_size] = resized
+    first_cell = cells[0]
 
-    return cv2.cvtColor(montage, cv2.COLOR_GRAY2BGR)
+    if first_cell.ndim != 2:
+        raise ValueError(
+            "cells must contain grayscale images"
+        )
+
+    cell_height, cell_width = first_cell.shape
+
+    montage = np.zeros(
+        (
+            9 * cell_height,
+            9 * cell_width,
+        ),
+        dtype=np.uint8,
+    )
+
+    for index, cell in enumerate(cells):
+        if cell.ndim != 2:
+            raise ValueError(
+                f"Cell {index} is not grayscale"
+            )
+
+        if cell.shape != (
+            cell_height,
+            cell_width,
+        ):
+            raise ValueError(
+                f"Cell {index} has shape {cell.shape}, "
+                f"expected {(cell_height, cell_width)}"
+            )
+
+        row, column = divmod(index, 9)
+
+        y1 = row * cell_height
+        y2 = y1 + cell_height
+        x1 = column * cell_width
+        x2 = x1 + cell_width
+
+        montage[
+            y1:y2,
+            x1:x2,
+        ] = cell
+
+    return cv2.cvtColor(
+        montage,
+        cv2.COLOR_GRAY2BGR,
+    )
 
 
 def extract_cells(
-    warped_binary: np.ndarray,
+    warped_bgr: np.ndarray,
     output_dir: Path,
-) -> dict[str, list[np.ndarray] | np.ndarray | str | list[bool] | list[str]]:
+) -> dict[
+    str,
+    list[np.ndarray]
+    | np.ndarray
+    | str
+    | list[bool]
+    | list[str],
+]:
+    if (
+        warped_bgr is None
+        or warped_bgr.size == 0
+    ):
+        raise ValueError(
+            "warped_bgr is empty"
+        )
 
     cells_dir = output_dir / "cells"
-    cells_dir.mkdir(parents=True, exist_ok=True)
 
-    h, w = warped_binary.shape[:2]
-    cell_h = h // 9
-    cell_w = w // 9
+    cells_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    height, width = warped_bgr.shape[:2]
+
+    expected_cell_size = int(
+        settings.get(
+            "cell_extraction.digit_input_size",
+            28,
+        )
+    )
+
+    expected_board_size = (
+        expected_cell_size * 9
+    )
+
+    if (
+        height != expected_board_size
+        or width != expected_board_size
+    ):
+        raise ValueError(
+            f"Expected warped board size "
+            f"{expected_board_size}x"
+            f"{expected_board_size}, "
+            f"but received {width}x{height}. "
+            f"Set grid_detection.board_size to "
+            f"{expected_board_size}."
+        )
+
+    cell_height = height // 9
+    cell_width = width // 9
 
     raw_cells: list[np.ndarray] = []
-    clean_cells: list[np.ndarray] = []
+    inverted_cells: list[np.ndarray] = []
     empty_flags: list[bool] = []
     cell_filenames: list[str] = []
 
-    for r in range(9):
-        for c in range(9):
-            y1, y2 = r * cell_h, (r + 1) * cell_h
-            x1, x2 = c * cell_w, (c + 1) * cell_w
+    save_cells = bool(
+        settings.get(
+            "cell_extraction.save_cells",
+            True,
+        )
+    )
 
-            raw = warped_binary[y1:y2, x1:x2]
-            clean, empty = clean_cell(raw)
+    for row in range(9):
+        for column in range(9):
+            y1 = row * cell_height
+            y2 = (row + 1) * cell_height
 
-            idx = r * 9 + c
-            filename = f"cells/cell_{idx:02d}.png"
-            save_image(output_dir / filename, clean)
+            x1 = column * cell_width
+            x2 = (column + 1) * cell_width
 
-            raw_cells.append(raw)
-            clean_cells.append(clean)
-            empty_flags.append(empty)
-            cell_filenames.append(filename)
+            raw = warped_bgr[
+                y1:y2,
+                x1:x2,
+            ]
 
-    montage = make_montage(clean_cells)
-    save_image(output_dir / "07_cells_montage.png", montage)
+            if raw.shape[:2] != (
+                expected_cell_size,
+                expected_cell_size,
+            ):
+                raise ValueError(
+                    f"Cell ({row}, {column}) "
+                    f"has shape {raw.shape[:2]}, "
+                    f"expected "
+                    f"{expected_cell_size}x"
+                    f"{expected_cell_size}"
+                )
+
+            if raw.ndim == 3:
+                raw_gray = cv2.cvtColor(
+                    raw,
+                    cv2.COLOR_BGR2GRAY,
+                )
+            else:
+                raw_gray = raw.copy()
+
+            inverted, empty = clean_cell(
+                raw_gray
+            )
+
+            index = row * 9 + column
+
+            filename = (
+                f"cells/cell_{index:02d}.png"
+            )
+
+            if save_cells:
+                save_image(
+                    output_dir / filename,
+                    inverted,
+                )
+
+            raw_cells.append(
+                raw_gray
+            )
+
+            inverted_cells.append(
+                inverted
+            )
+
+            empty_flags.append(
+                empty
+            )
+
+            cell_filenames.append(
+                filename
+            )
+
+    raw_montage = make_montage(
+        raw_cells
+    )
+
+    save_image(
+        output_dir
+        / "06_raw_cells_montage.png",
+        raw_montage,
+    )
+
+    inverted_montage = make_montage(
+        inverted_cells
+    )
+
+    montage_path = (
+        "07_inverted_grayscale_montage.png"
+    )
+
+    save_image(
+        output_dir / montage_path,
+        inverted_montage,
+    )
 
     return {
         "raw_cells": raw_cells,
-        "clean_cells": clean_cells,
+        # برای حفظ سازگاری با کدهای فعلی، نام کلید را نگه می‌داریم.
+        "clean_cells": inverted_cells,
+        "inverted_cells": inverted_cells,
         "empty_flags": empty_flags,
         "cell_filenames": cell_filenames,
-        "cells_montage": montage,
-        "cells_montage_path": "07_cells_montage.png",
+        "cells_montage": inverted_montage,
+        "cells_montage_path": montage_path,
     }

@@ -14,15 +14,6 @@ DIGIT_SAMPLE_FOLDERS = {i: f"Sample{i + 1:03d}" for i in range(10)}
 
 
 class Chars74KFntDataset(Dataset):
-    """
-    فقط زیرمجموعه‌ی ارقام (Sample001-Sample010) از Chars74K English/Fnt رو می‌خونه.
-    این نسخه شامل کاراکترهای چاپی رندرشده با فونت‌های کامپیوتری واقعیه (نه دست‌نویس).
-
-    نکته‌ی مهم: تصاویر خام Chars74K معمولاً متن تیره روی زمینه‌ی روشن‌اند
-    (برخلاف MNIST/Hoda که رقم روشن روی زمینه‌ی تاریکه). برای هماهنگی پولاریتی
-    با بقیه‌ی دیتاست‌ها (و با خروجی واقعی clean_cell که THRESH_BINARY_INV می‌زنه)،
-    این کلاس همیشه تصویر رو invert می‌کنه.
-    """
 
     def __init__(
         self,

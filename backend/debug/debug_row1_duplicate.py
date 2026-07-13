@@ -17,7 +17,7 @@ from phases.phase_03_cell_extraction.cell_extraction import extract_cells
 from phases.phase_04_digit_recognition.src.classifier import PyTorchDigitClassifier
 
 
-IMAGE_PATH = "storage/sudoku/raw/v1_test/v1_test/image72.jpg"
+IMAGE_PATH = "storage/sudoku/raw/v1_test/v1_test/image199.jpg"
 DEBUG_DIR = Path("storage/sudoku/debug_row_check")
 
 # ردیف دلخواه برای نمایش، عدد انسانی از 1 تا 9
@@ -65,7 +65,7 @@ def main():
     )
 
     cells_result = extract_cells(
-        warped_binary=grid_result["warped"],
+        warped_bgr=grid_result["warped"],
         output_dir=DEBUG_DIR,
     )
 

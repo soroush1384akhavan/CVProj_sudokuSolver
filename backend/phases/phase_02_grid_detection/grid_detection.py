@@ -43,12 +43,7 @@ def fallback_corners(image: np.ndarray) -> np.ndarray:
 
 
 def _ensure_binary_image(image: np.ndarray) -> np.ndarray:
-    """
-    Ensure input is a single-channel binary uint8 image with values 0/255.
 
-    Expected foreground:
-        white grid/lines on black background.
-    """
 
     if image is None:
         raise ValueError("Input image is None.")
@@ -65,7 +60,6 @@ def _ensure_binary_image(image: np.ndarray) -> np.ndarray:
 
 
 def _quad_side_lengths(corners: np.ndarray) -> np.ndarray:
-    """Return the 4 side lengths of an ordered quadrilateral: TL, TR, BR, BL."""
     rolled = np.roll(corners, -1, axis=0)
     return np.linalg.norm(rolled - corners, axis=1)
 
@@ -92,14 +86,13 @@ def _find_quad_candidate(
     min_area: float,
     epsilon_ratios: list[float],
 ) -> np.ndarray | None:
-    """Find the best quadrilateral candidate from a binary preprocessed image."""
 
     contours, _ = cv2.findContours(
         binary.copy(),
         cv2.RETR_EXTERNAL,
         cv2.CHAIN_APPROX_SIMPLE,
     )
-
+    
     contours = sorted(contours, key=cv2.contourArea, reverse=True)[:max_contours]
 
     for contour in contours:
@@ -130,7 +123,7 @@ def _find_quad_candidate(
 
 
 def _repair_grid_lines(binary: np.ndarray, kernel_size: int = 3) -> np.ndarray:
-    """Repair broken grid lines in the binary image."""
+
     kernel = cv2.getStructuringElement(
         cv2.MORPH_RECT,
         (kernel_size, kernel_size),
@@ -147,7 +140,6 @@ def _repair_grid_lines(binary: np.ndarray, kernel_size: int = 3) -> np.ndarray:
 
 
 def _draw_detected_corners(binary: np.ndarray, corners: np.ndarray) -> np.ndarray:
-    """Create BGR debug image from binary image and draw detected contour/corners."""
     debug_bgr = cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR)
 
     cv2.polylines(
@@ -178,29 +170,7 @@ def find_sudoku_grid(
     preprocessed_binary: np.ndarray,
     output_dir: Path,
 ) -> dict[str, np.ndarray | bool | str]:
-    """
-    Detect Sudoku grid from a preprocessed binary image, and warp both the
-    binary image (for grid-line based logic) and the original color image
-    (for actual cell content used downstream).
-
-    Input:
-        original_bgr:
-            Original color image (same pre-crop coordinate space as
-            preprocessed_binary), used to produce a real color warped board.
-
-        preprocessed_binary:
-            Single-channel binary image from phase 01 preprocessing.
-            Expected format: uint8, 0/255, grid/foreground white.
-
-    Output:
-        warped_binary:
-            Perspective-corrected binary board (for grid/line analysis).
-
-        warped:
-            Perspective-corrected REAL color board (from original_bgr),
-            for cell extraction / digit recognition downstream.
-    """
-
+ 
     output_dir.mkdir(parents=True, exist_ok=True)
 
     binary = _ensure_binary_image(preprocessed_binary)
@@ -264,7 +234,6 @@ def find_sudoku_grid(
         corners = fallback_corners(binary)
         matrix = cv2.getPerspectiveTransform(corners, dst)
 
-    # warp نسخه‌ی باینری (برای تحلیل خطوط جدول)
     warped_binary = cv2.warpPerspective(
         binary,
         matrix,
@@ -273,8 +242,6 @@ def find_sudoku_grid(
     )
     _, warped_binary = cv2.threshold(warped_binary, 127, 255, cv2.THRESH_BINARY)
 
-    # warp نسخه‌ی رنگی واقعی (همون ماتریس، ولی روی original_bgr) — این خروجی اصلیه که
-    # extract_cells/clean_cell باید ازش استفاده کنن، نه warped_binary.
     warped_bgr = cv2.warpPerspective(
         original_bgr,
         matrix,
@@ -295,11 +262,7 @@ def find_sudoku_grid(
         "corners": corners,
         "matrix": matrix,
         "inverse_matrix": inverse_matrix,
-
-        # برای تحلیل‌های مبتنی بر خط جدول (اگه جایی لازم شد)
         "warped_binary": warped_binary,
-
-        # خروجی اصلی رنگی واقعی، برای extract_cells / digit recognition
         "warped": warped_bgr,
 
         "contour_debug_path": "05_detected_contour.png",

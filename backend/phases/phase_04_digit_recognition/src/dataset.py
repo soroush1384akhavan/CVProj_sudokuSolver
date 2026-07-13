@@ -154,7 +154,42 @@ class DigitTransform:
         return foreground_pixels < self.empty_threshold
 
 
-def build_digit_dataloaders():
+def _normalize_languages(languages: list[str] | str | None) -> set[str]:
+    """
+    ورودی languages رو نرمالایز می‌کنه.
+
+    مقادیر معتبر: "fa" (فارسی، یعنی Hoda)، "en" (انگلیسی، یعنی MNIST + Chars74K).
+    اگه None یا خالی بود، هر دو در نظر گرفته می‌شن (رفتار پیش‌فرض قدیمی).
+    """
+    if languages is None:
+        return {"fa", "en"}
+
+    if isinstance(languages, str):
+        languages = [languages]
+
+    normalized = {lang.strip().lower() for lang in languages}
+
+    valid = {"fa", "en"}
+    invalid = normalized - valid
+    if invalid:
+        raise ValueError(f"Invalid language(s): {invalid}. Valid options: {valid}")
+
+    if not normalized:
+        return {"fa", "en"}
+
+    return normalized
+
+
+def build_digit_dataloaders(languages: list[str] | str | None = None):
+    """
+    languages: کدوم زبان‌ها وارد training/eval بشن.
+        - None یا ["fa", "en"] -> هر دو (پیش‌فرض، رفتار قدیمی)
+        - ["en"] -> فقط MNIST + Chars74K (انگلیسی/چاپی)
+        - ["fa"] -> فقط Hoda (فارسی)
+
+    اگه پارامتر پاس داده نشه، از کانفیگ (digit_recognition.data.languages) خونده می‌شه؛
+    اگه اونجا هم نبود، هر دو زبان استفاده می‌شن.
+    """
     backend_root = BACKEND_ROOT
 
     phase_cfg = get_phase4_config()
@@ -163,6 +198,11 @@ def build_digit_dataloaders():
     data_cfg = phase_cfg.get("data", {})
     train_cfg = phase_cfg.get("training", {})
     aug_cfg = phase_cfg.get("augmentation", {})
+
+    if languages is None:
+        languages = data_cfg.get("languages")
+
+    active_languages = _normalize_languages(languages)
 
     image_size = int(model_cfg.get("image_size", 28))
     validation_split = float(data_cfg.get("validation_split", 0.1))
@@ -174,35 +214,6 @@ def build_digit_dataloaders():
     num_workers = int(data_cfg.get("num_workers", 0))
 
     augmentation_enabled = bool(aug_cfg.get("enabled", True))
-
-    hoda_cfg = data_cfg.get("hoda", {})
-    mnist_cfg = data_cfg.get("mnist", {})
-    chars74k_cfg = data_cfg.get("chars74k", {})
-
-    hoda_root = backend_root / hoda_cfg.get(
-        "raw_dir",
-        "phases/phase_04_digit_recognition/src/datasets/hoda",
-    )
-
-    hoda_train_cdb = hoda_root / hoda_cfg.get(
-        "train_cdb",
-        "DigitDB/Train 60000.cdb",
-    )
-
-    hoda_test_cdb = hoda_root / hoda_cfg.get(
-        "test_cdb",
-        "DigitDB/Test 20000.cdb",
-    )
-
-    mnist_root = backend_root / mnist_cfg.get(
-        "root_dir",
-        "phases/phase_04_digit_recognition/src/datasets/mnist",
-    )
-
-    chars74k_root = backend_root / chars74k_cfg.get(
-        "root_dir",
-        "phases/phase_04_digit_recognition/src/datasets/chars74k/EnglishFnt/Fnt",
-    )
 
     train_transform = DigitTransform(
         size=image_size,
@@ -216,98 +227,128 @@ def build_digit_dataloaders():
         augment_config=aug_cfg,
     )
 
-    hoda_train_aug = HodaCDBDataset(
-        cdb_path=hoda_train_cdb,
-        image_size=image_size,
-        include_zero_digit=include_zero_digit,
-        transform=train_transform,
-    )
+    train_aug_sources = []
+    train_eval_sources = []
+    test_sources = []
 
-    hoda_train_eval = HodaCDBDataset(
-        cdb_path=hoda_train_cdb,
-        image_size=image_size,
-        include_zero_digit=include_zero_digit,
-        transform=eval_transform,
-    )
+    dataset_sizes: dict[str, int] = {}
 
-    hoda_test = HodaCDBDataset(
-        cdb_path=hoda_test_cdb,
-        image_size=image_size,
-        include_zero_digit=include_zero_digit,
-        transform=eval_transform,
-    )
+    # --- فارسی: Hoda ---
+    if "fa" in active_languages:
+        hoda_cfg = data_cfg.get("hoda", {})
+        hoda_root = backend_root / hoda_cfg.get(
+            "raw_dir",
+            "phases/phase_04_digit_recognition/src/datasets/hoda",
+        )
+        hoda_train_cdb = hoda_root / hoda_cfg.get("train_cdb", "DigitDB/Train 60000.cdb")
+        hoda_test_cdb = hoda_root / hoda_cfg.get("test_cdb", "DigitDB/Test 20000.cdb")
 
-    mnist_train_aug = MNISTRawDataset(
-        root_dir=mnist_root,
-        train=True,
-        include_zero_digit=include_zero_digit,
-        transform=train_transform,
-    )
+        hoda_train_aug = HodaCDBDataset(
+            cdb_path=hoda_train_cdb,
+            image_size=image_size,
+            include_zero_digit=include_zero_digit,
+            transform=train_transform,
+        )
+        hoda_train_eval = HodaCDBDataset(
+            cdb_path=hoda_train_cdb,
+            image_size=image_size,
+            include_zero_digit=include_zero_digit,
+            transform=eval_transform,
+        )
+        hoda_test = HodaCDBDataset(
+            cdb_path=hoda_test_cdb,
+            image_size=image_size,
+            include_zero_digit=include_zero_digit,
+            transform=eval_transform,
+        )
 
-    mnist_train_eval = MNISTRawDataset(
-        root_dir=mnist_root,
-        train=True,
-        include_zero_digit=include_zero_digit,
-        transform=eval_transform,
-    )
+        train_aug_sources.append(hoda_train_aug)
+        train_eval_sources.append(hoda_train_eval)
+        test_sources.append(hoda_test)
+        dataset_sizes["Hoda train"] = len(hoda_train_aug)
+        dataset_sizes["Hoda test"] = len(hoda_test)
 
-    mnist_test = MNISTRawDataset(
-        root_dir=mnist_root,
-        train=False,
-        include_zero_digit=include_zero_digit,
-        transform=eval_transform,
-    )
+    # --- انگلیسی: MNIST + Chars74K ---
+    if "en" in active_languages:
+        mnist_cfg = data_cfg.get("mnist", {})
+        chars74k_cfg = data_cfg.get("chars74k", {})
 
-    # Chars74K هیچ split رسمی train/test نداره (فقط یک پوشه‌ی تخت پر از عکس)،
-    # پس خودمون یک split تصادفی و ثابت (با seed) روش می‌زنیم.
-    chars74k_full_aug = Chars74KFntDataset(
-        root_dir=chars74k_root,
-        image_size=image_size,
-        include_zero_digit=include_zero_digit,
-        transform=train_transform,
-    )
+        mnist_root = backend_root / mnist_cfg.get(
+            "root_dir",
+            "phases/phase_04_digit_recognition/src/datasets/mnist",
+        )
+        chars74k_root = backend_root / chars74k_cfg.get(
+            "root_dir",
+            "phases/phase_04_digit_recognition/src/datasets/chars74k/EnglishFnt/Fnt",
+        )
 
-    chars74k_full_eval = Chars74KFntDataset(
-        root_dir=chars74k_root,
-        image_size=image_size,
-        include_zero_digit=include_zero_digit,
-        transform=eval_transform,
-    )
+        mnist_train_aug = MNISTRawDataset(
+            root_dir=mnist_root,
+            train=True,
+            include_zero_digit=include_zero_digit,
+            transform=train_transform,
+        )
+        mnist_train_eval = MNISTRawDataset(
+            root_dir=mnist_root,
+            train=True,
+            include_zero_digit=include_zero_digit,
+            transform=eval_transform,
+        )
+        mnist_test = MNISTRawDataset(
+            root_dir=mnist_root,
+            train=False,
+            include_zero_digit=include_zero_digit,
+            transform=eval_transform,
+        )
 
-    n_c74k = len(chars74k_full_aug)
-    c74k_test_split = float(chars74k_cfg.get("test_split", 0.1))
-    n_c74k_test = int(n_c74k * c74k_test_split)
-    n_c74k_train = n_c74k - n_c74k_test
+        chars74k_full_aug = Chars74KFntDataset(
+            root_dir=chars74k_root,
+            image_size=image_size,
+            include_zero_digit=include_zero_digit,
+            transform=train_transform,
+        )
+        chars74k_full_eval = Chars74KFntDataset(
+            root_dir=chars74k_root,
+            image_size=image_size,
+            include_zero_digit=include_zero_digit,
+            transform=eval_transform,
+        )
 
-    c74k_indices = torch.randperm(
-        n_c74k,
-        generator=torch.Generator().manual_seed(seed),
-    ).tolist()
+        n_c74k = len(chars74k_full_aug)
+        c74k_test_split = float(chars74k_cfg.get("test_split", 0.1))
+        n_c74k_test = int(n_c74k * c74k_test_split)
+        n_c74k_train = n_c74k - n_c74k_test
 
-    c74k_train_indices = c74k_indices[:n_c74k_train]
-    c74k_test_indices = c74k_indices[n_c74k_train:]
+        c74k_indices = torch.randperm(
+            n_c74k,
+            generator=torch.Generator().manual_seed(seed),
+        ).tolist()
 
-    chars74k_train_aug = Subset(chars74k_full_aug, c74k_train_indices)
-    chars74k_train_eval = Subset(chars74k_full_eval, c74k_train_indices)
-    chars74k_test = Subset(chars74k_full_eval, c74k_test_indices)
+        c74k_train_indices = c74k_indices[:n_c74k_train]
+        c74k_test_indices = c74k_indices[n_c74k_train:]
 
-    full_train_aug_dataset = ConcatDataset([
-        hoda_train_aug,
-        mnist_train_aug,
-        chars74k_train_aug,
-    ])
+        chars74k_train_aug = Subset(chars74k_full_aug, c74k_train_indices)
+        chars74k_train_eval = Subset(chars74k_full_eval, c74k_train_indices)
+        chars74k_test = Subset(chars74k_full_eval, c74k_test_indices)
 
-    full_train_eval_dataset = ConcatDataset([
-        hoda_train_eval,
-        mnist_train_eval,
-        chars74k_train_eval,
-    ])
+        train_aug_sources.append(mnist_train_aug)
+        train_eval_sources.append(mnist_train_eval)
+        test_sources.append(mnist_test)
+        dataset_sizes["MNIST train"] = len(mnist_train_aug)
+        dataset_sizes["MNIST test"] = len(mnist_test)
 
-    test_dataset = ConcatDataset([
-        hoda_test,
-        mnist_test,
-        chars74k_test,
-    ])
+        train_aug_sources.append(chars74k_train_aug)
+        train_eval_sources.append(chars74k_train_eval)
+        test_sources.append(chars74k_test)
+        dataset_sizes["Chars74K train"] = len(chars74k_train_aug)
+        dataset_sizes["Chars74K test"] = len(chars74k_test)
+
+    if not train_aug_sources:
+        raise ValueError(f"No datasets selected for languages={active_languages}")
+
+    full_train_aug_dataset = ConcatDataset(train_aug_sources)
+    full_train_eval_dataset = ConcatDataset(train_eval_sources)
+    test_dataset = ConcatDataset(test_sources)
 
     n_total = len(full_train_aug_dataset)
     n_val = int(n_total * validation_split)
@@ -321,15 +362,8 @@ def build_digit_dataloaders():
     train_indices = indices[:n_train]
     val_indices = indices[n_train:]
 
-    train_dataset = Subset(
-        full_train_aug_dataset,
-        train_indices,
-    )
-
-    val_dataset = Subset(
-        full_train_eval_dataset,
-        val_indices,
-    )
+    train_dataset = Subset(full_train_aug_dataset, train_indices)
+    val_dataset = Subset(full_train_eval_dataset, val_indices)
 
     train_loader = DataLoader(
         train_dataset,
@@ -352,15 +386,12 @@ def build_digit_dataloaders():
         num_workers=num_workers,
     )
 
+    print(f"Active languages: {sorted(active_languages)}")
     print("Datasets loaded:")
-    print(f"Hoda train:      {len(hoda_train_aug)}")
-    print(f"MNIST train:     {len(mnist_train_aug)}")
-    print(f"Chars74K train:  {len(chars74k_train_aug)}")
+    for name, size in dataset_sizes.items():
+        print(f"{name}: {size}")
     print(f"Train total:     {len(train_dataset)}")
     print(f"Val total:       {len(val_dataset)}")
-    print(f"Hoda test:       {len(hoda_test)}")
-    print(f"MNIST test:      {len(mnist_test)}")
-    print(f"Chars74K test:   {len(chars74k_test)}")
     print(f"Test total:      {len(test_dataset)}")
 
     print("\nDataLoader config:")
@@ -374,9 +405,10 @@ def build_digit_dataloaders():
 
     return train_loader, val_loader, test_loader
 
-def build_eval_only_datasets() -> dict:
+
+def build_eval_only_datasets(languages: list[str] | str | None = None) -> dict:
     """
-    برای هر ساب‌دیتاست (Hoda, MNIST, Chars74K) یک نسخه‌ی eval-only (بدون augmentation)
+    برای هر ساب‌دیتاست فعال (بر اساس languages) یک نسخه‌ی eval-only (بدون augmentation)
     از test set جداگانه برمی‌گردونه، تا بشه دقت مدل رو روی هرکدوم جداگانه سنجید.
     """
     backend_root = BACKEND_ROOT
@@ -386,6 +418,11 @@ def build_eval_only_datasets() -> dict:
     data_cfg = phase_cfg.get("data", {})
     train_cfg = phase_cfg.get("training", {})
 
+    if languages is None:
+        languages = data_cfg.get("languages")
+
+    active_languages = _normalize_languages(languages)
+
     image_size = int(model_cfg.get("image_size", 28))
     include_zero_digit = bool(data_cfg.get("include_zero_digit", False))
     seed = int(train_cfg.get("seed", 42))
@@ -393,50 +430,50 @@ def build_eval_only_datasets() -> dict:
     aug_cfg = phase_cfg.get("augmentation", {})
     eval_transform = DigitTransform(size=image_size, augment=False, augment_config=aug_cfg)
 
-    hoda_cfg = data_cfg.get("hoda", {})
-    mnist_cfg = data_cfg.get("mnist", {})
-    chars74k_cfg = data_cfg.get("chars74k", {})
+    result: dict = {}
 
-    hoda_root = backend_root / hoda_cfg.get("raw_dir", "phases/phase_04_digit_recognition/src/datasets/hoda")
-    hoda_test_cdb = hoda_root / hoda_cfg.get("test_cdb", "DigitDB/Test 20000.cdb")
+    if "fa" in active_languages:
+        hoda_cfg = data_cfg.get("hoda", {})
+        hoda_root = backend_root / hoda_cfg.get("raw_dir", "phases/phase_04_digit_recognition/src/datasets/hoda")
+        hoda_test_cdb = hoda_root / hoda_cfg.get("test_cdb", "DigitDB/Test 20000.cdb")
 
-    mnist_root = backend_root / mnist_cfg.get("root_dir", "phases/phase_04_digit_recognition/src/datasets/mnist")
+        result["hoda"] = HodaCDBDataset(
+            cdb_path=hoda_test_cdb,
+            image_size=image_size,
+            include_zero_digit=include_zero_digit,
+            transform=eval_transform,
+        )
 
-    chars74k_root = backend_root / chars74k_cfg.get(
-        "root_dir", "phases/phase_04_digit_recognition/src/datasets/chars74k/EnglishFnt/Fnt"
-    )
+    if "en" in active_languages:
+        mnist_cfg = data_cfg.get("mnist", {})
+        chars74k_cfg = data_cfg.get("chars74k", {})
 
-    hoda_test = HodaCDBDataset(
-        cdb_path=hoda_test_cdb,
-        image_size=image_size,
-        include_zero_digit=include_zero_digit,
-        transform=eval_transform,
-    )
+        mnist_root = backend_root / mnist_cfg.get("root_dir", "phases/phase_04_digit_recognition/src/datasets/mnist")
+        chars74k_root = backend_root / chars74k_cfg.get(
+            "root_dir", "phases/phase_04_digit_recognition/src/datasets/chars74k/EnglishFnt/Fnt"
+        )
 
-    mnist_test = MNISTRawDataset(
-        root_dir=mnist_root,
-        train=False,
-        include_zero_digit=include_zero_digit,
-        transform=eval_transform,
-    )
+        result["mnist"] = MNISTRawDataset(
+            root_dir=mnist_root,
+            train=False,
+            include_zero_digit=include_zero_digit,
+            transform=eval_transform,
+        )
 
-    chars74k_full_eval = Chars74KFntDataset(
-        root_dir=chars74k_root,
-        image_size=image_size,
-        include_zero_digit=include_zero_digit,
-        transform=eval_transform,
-    )
+        chars74k_full_eval = Chars74KFntDataset(
+            root_dir=chars74k_root,
+            image_size=image_size,
+            include_zero_digit=include_zero_digit,
+            transform=eval_transform,
+        )
 
-    n_c74k = len(chars74k_full_eval)
-    c74k_test_split = float(chars74k_cfg.get("test_split", 0.1))
-    n_c74k_test = int(n_c74k * c74k_test_split)
+        n_c74k = len(chars74k_full_eval)
+        c74k_test_split = float(chars74k_cfg.get("test_split", 0.1))
+        n_c74k_test = int(n_c74k * c74k_test_split)
 
-    c74k_indices = torch.randperm(n_c74k, generator=torch.Generator().manual_seed(seed)).tolist()
-    c74k_test_indices = c74k_indices[n_c74k - n_c74k_test:]
-    chars74k_test = Subset(chars74k_full_eval, c74k_test_indices)
+        c74k_indices = torch.randperm(n_c74k, generator=torch.Generator().manual_seed(seed)).tolist()
+        c74k_test_indices = c74k_indices[n_c74k - n_c74k_test:]
 
-    return {
-        "hoda": hoda_test,
-        "mnist": mnist_test,
-        "chars74k": chars74k_test,
-    }
+        result["chars74k"] = Subset(chars74k_full_eval, c74k_test_indices)
+
+    return result

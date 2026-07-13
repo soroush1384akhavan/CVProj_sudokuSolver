@@ -69,7 +69,7 @@ def load_and_solve(
             print(f"⚠️  Grid not found (fallback used): {path.name}")
 
         cells_result = extract_cells(
-            warped_binary=grid_result["warped"],
+            warped_bgr=grid_result["warped"],
             output_dir=image_output_dir,
         )
 

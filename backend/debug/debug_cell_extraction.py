@@ -47,6 +47,7 @@ def load_and_extract_cells(folder: str | Path, debug_output_dir: str | Path) -> 
 
         grid_result = find_sudoku_grid(
             preprocessed_binary=preprocessed["threshold"],
+            original_bgr=preprocessed["original"],
             output_dir=image_output_dir,
         )
 
@@ -55,7 +56,7 @@ def load_and_extract_cells(folder: str | Path, debug_output_dir: str | Path) -> 
             print(f"Grid not found (fallback used): {path.name}")
 
         cells_result = extract_cells(
-            warped_binary=grid_result["warped_binary"],
+            warped_bgr=grid_result["warped"],
             output_dir=image_output_dir,
         )
 
