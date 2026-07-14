@@ -1,0 +1,64 @@
+{
+  "seed": 1701254515,
+  "difficulty": "medium",
+  "requested_blanks": 45,
+  "count_per_language": 50,
+  "languages": [
+    "en",
+    "fa"
+  ],
+  "variants_per_image": 3,
+  "variant_severity": 1.2,
+  "max_variant_attempts": 12,
+  "border_check": 18,
+  "english_font_filter": "latin_family_allowlist_plus_farsi_exclusions",
+  "variant_blur_mode": "blur_heavy_noise_light",
+  "font_dir": "Fonts",
+  "max_fonts_per_language": 10,
+  "selected_fonts": {
+    "en": [
+      "arial.ttf",
+      "arialbd.ttf",
+      "arialbi.ttf",
+      "ariali.ttf",
+      "ARIALN.TTF",
+      "ARIALNB.TTF",
+      "ARIALNBI.TTF",
+      "ARIALNI.TTF",
+      "calibri.ttf",
+      "calibrib.ttf"
+    ],
+    "fa": [
+      "arial.ttf",
+      "arialbd.ttf",
+      "BNazanin.ttf",
+      "BYekan.ttf",
+      "IRANSans(FaNum).ttf",
+      "IRANSans(FaNum)_Black.ttf",
+      "IRANSans(FaNum)_Bold.ttf",
+      "IRANSans(FaNum)_Light.ttf",
+      "IRANSans(FaNum)_Medium.ttf",
+      "IRANSans(FaNum)_UltraLight.ttf"
+    ]
+  },
+  "english_font_strategy": "curated_famous_english_fonts_only",
+  "persian_font_strategy": "random_from_accepted_fonts",
+  "output_directory": "sudoku_runs\\sudoku_medium_20260714_151427_563299_seed_1701254515",
+  "language_outputs": {
+    "en": {
+      "directory": "sudoku_runs\\sudoku_medium_20260714_151427_563299_seed_1701254515\\en",
+      "original_images_directory": "sudoku_runs\\sudoku_medium_20260714_151427_563299_seed_1701254515\\en\\images_original",
+      "variant_images_directory": "sudoku_runs\\sudoku_medium_20260714_151427_563299_seed_1701254515\\en\\images_variant",
+      "labels_file": "sudoku_runs\\sudoku_medium_20260714_151427_563299_seed_1701254515\\en\\labels.csv",
+      "total_labeled_images_written": 200
+    },
+    "fa": {
+      "directory": "sudoku_runs\\sudoku_medium_20260714_151427_563299_seed_1701254515\\fa",
+      "original_images_directory": "sudoku_runs\\sudoku_medium_20260714_151427_563299_seed_1701254515\\fa\\images_original",
+      "variant_images_directory": "sudoku_runs\\sudoku_medium_20260714_151427_563299_seed_1701254515\\fa\\images_variant",
+      "labels_file": "sudoku_runs\\sudoku_medium_20260714_151427_563299_seed_1701254515\\fa\\labels.csv",
+      "total_labeled_images_written": 200
+    }
+  },
+  "total_labeled_images_written": 400
+}

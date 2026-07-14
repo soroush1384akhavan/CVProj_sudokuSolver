@@ -1,7 +1,4 @@
-from __future__ import annotations
-
 from pathlib import Path
-
 import cv2
 import numpy as np
 
@@ -10,31 +7,14 @@ from common.images import save_image
 
 
 def normalize_binary_mask(binary: np.ndarray) -> np.ndarray:
+    """ماسک را به تصویر uint8 شامل 0 و 255 تبدیل می‌کند.
+
+    فرض می‌کنیم foreground نسبت به background مساحت کمتری دارد. اگر بیشتر تصویر
+    سفید باشد، polarity را معکوس می‌کنیم.
     """
-    ماسک را به تصویر uint8 شامل 0 و 255 تبدیل می‌کند.
+    mask = binary
 
-    فرض می‌کنیم foreground نسبت به background مساحت کمتری دارد.
-    اگر بیشتر تصویر سفید باشد، polarity را معکوس می‌کنیم.
-    """
-    if binary.ndim == 3:
-        binary = cv2.cvtColor(
-            binary,
-            cv2.COLOR_BGR2GRAY,
-        )
-    elif binary.ndim != 2:
-        raise ValueError(
-            f"Unsupported binary mask shape: {binary.shape}"
-        )
-
-    mask = np.where(
-        binary > 127,
-        255,
-        0,
-    ).astype(np.uint8)
-
-    white_ratio = float(
-        np.count_nonzero(mask) / mask.size
-    )
+    white_ratio = float(np.count_nonzero(mask) / mask.size)
 
     # اگر background سفید باشد، foreground را سفید می‌کنیم.
     if white_ratio > 0.50:
@@ -43,273 +23,76 @@ def normalize_binary_mask(binary: np.ndarray) -> np.ndarray:
     return mask
 
 
-def extract_digit_bbox(
-    binary_cell: np.ndarray,
-    margin_ratio: float | None = None,
-    min_area_ratio: float | None = None,
-) -> tuple[tuple[int, int, int, int] | None, bool]:
-    """
-    از binary مربوط به یک سلول، فقط محدوده‌ی رقم (bbox) را استخراج می‌کند.
-
-    خروجی:
-        ((x1, y1, x2, y2), empty)
-    """
-    mask = normalize_binary_mask(binary_cell)
-
-    height, width = mask.shape
-
-    margin_ratio = (
-        float(
-            settings.get(
-                "cell_extraction.mask_margin_ratio",
-                0.10,
-            )
-        )
-        if margin_ratio is None
-        else float(margin_ratio)
-    )
-
-    min_area_ratio = (
-        float(
-            settings.get(
-                "cell_extraction.mask_min_area_ratio",
-                0.015,
-            )
-        )
-        if min_area_ratio is None
-        else float(min_area_ratio)
-    )
-
-    margin_y = max(1, int(round(height * margin_ratio)))
-    margin_x = max(1, int(round(width * margin_ratio)))
-
-    # حذف خطوط جدول در حاشیه
-    mask[:margin_y, :] = 0
-    mask[height - margin_y:, :] = 0
-    mask[:, :margin_x] = 0
-    mask[:, width - margin_x:] = 0
-
-    (
-        component_count,
-        component_labels,
-        stats,
-        _,
-    ) = cv2.connectedComponentsWithStats(
-        mask,
-        connectivity=8,
-    )
-
-    min_main_area = max(
-        3,
-        int(round(mask.size * min_area_ratio)),
-    )
-
-    candidates: list[
-        tuple[float, int, int, int, int, int, int]
-    ] = []
-
-    for label in range(1, component_count):
-        x = int(stats[label, cv2.CC_STAT_LEFT])
-        y = int(stats[label, cv2.CC_STAT_TOP])
-        component_width = int(stats[label, cv2.CC_STAT_WIDTH])
-        component_height = int(stats[label, cv2.CC_STAT_HEIGHT])
-        area = int(stats[label, cv2.CC_STAT_AREA])
-
-        if area < min_main_area:
-            continue
-
-        horizontal_line = (
-            component_width >= int(width * 0.70)
-            and component_height <= 2
-        )
-
-        vertical_line = (
-            component_height >= int(height * 0.70)
-            and component_width <= 2
-        )
-
-        if horizontal_line or vertical_line:
-            continue
-
-        center_x = x + component_width / 2.0
-        center_y = y + component_height / 2.0
-
-        dx = abs(center_x - width / 2.0) / max(width / 2.0, 1.0)
-        dy = abs(center_y - height / 2.0) / max(height / 2.0, 1.0)
-
-        center_distance = min(
-            1.0,
-            float(np.hypot(dx, dy) / np.sqrt(2.0)),
-        )
-
-        center_score = 1.0 - center_distance
-
-        score = float(area) * (0.85 + 0.15 * center_score)
-
-        candidates.append(
-            (
-                score,
-                label,
-                x,
-                y,
-                component_width,
-                component_height,
-                area,
-            )
-        )
-
-    if not candidates:
-        return None, True
-
-    (
-        _,
-        main_label,
-        main_x,
-        main_y,
-        main_width,
-        main_height,
-        _,
-    ) = max(candidates, key=lambda item: item[0])
-
-    main_right = main_x + main_width
-    main_bottom = main_y + main_height
-
-    fragment_padding = int(
-        settings.get(
-            "cell_extraction.mask_fragment_padding",
-            3,
-        )
-    )
-
-    expanded_x1 = max(0, main_x - fragment_padding)
-    expanded_y1 = max(0, main_y - fragment_padding)
-    expanded_x2 = min(width, main_right + fragment_padding)
-    expanded_y2 = min(height, main_bottom + fragment_padding)
-
-    keep_labels = {main_label}
-
-    minimum_fragment_area = int(
-        settings.get(
-            "cell_extraction.mask_min_fragment_area",
-            2,
-        )
-    )
-
-    for label in range(1, component_count):
-        if label == main_label:
-            continue
-
-        x = int(stats[label, cv2.CC_STAT_LEFT])
-        y = int(stats[label, cv2.CC_STAT_TOP])
-        component_width = int(stats[label, cv2.CC_STAT_WIDTH])
-        component_height = int(stats[label, cv2.CC_STAT_HEIGHT])
-        area = int(stats[label, cv2.CC_STAT_AREA])
-
-        if area < minimum_fragment_area:
-            continue
-
-        right = x + component_width
-        bottom = y + component_height
-
-        near_main_component = not (
-            right < expanded_x1
-            or x > expanded_x2
-            or bottom < expanded_y1
-            or y > expanded_y2
-        )
-
-        if near_main_component:
-            keep_labels.add(label)
-
-    kept_mask = np.where(
-        np.isin(component_labels, list(keep_labels)),
-        255,
-        0,
-    ).astype(np.uint8)
-
-    ys, xs = np.where(kept_mask > 0)
-
-    if len(xs) == 0 or len(ys) == 0:
-        return None, True
-
-    bbox_padding = int(
-        settings.get(
-            "cell_extraction.digit_bbox_padding",
-            1,
-        )
-    )
-
-    x1 = max(0, int(xs.min()) - bbox_padding)
-    y1 = max(0, int(ys.min()) - bbox_padding)
-    x2 = min(width, int(xs.max()) + 1 + bbox_padding)
-    y2 = min(height, int(ys.max()) + 1 + bbox_padding)
-
-    return (x1, y1, x2, y2), False
-
-def center_digit_grayscale(
+def center_and_scale_digit(
     digit_gray: np.ndarray,
-    output_size: int,
-    content_size: int | None = None,
-) -> np.ndarray:
-    if digit_gray.ndim != 2:
-        raise ValueError("digit_gray must be 2D")
+    digit_mask: np.ndarray,
+    output_size: int = 28,
+    padding: int = 4,
+) -> tuple[np.ndarray, np.ndarray]:
+    """محدوده رقم را پیدا کرده، آن را بدون ریسایز مخرب بزرگ‌تر کرده و دقیقاً در
 
-    if digit_gray.size == 0:
-        return np.zeros((output_size, output_size), dtype=np.uint8)
+    مرکز بوم خروجی قرار می‌دهد. هم روی تصویر خاکستری و هم ماسک اعمال می‌شود.
+    """
+    canvas_gray = np.zeros((output_size, output_size), dtype=np.uint8)
+    canvas_mask = np.zeros((output_size, output_size), dtype=np.uint8)
 
-    h, w = digit_gray.shape
+    if digit_mask is None or np.count_nonzero(digit_mask) == 0:
+        return canvas_gray, canvas_mask
 
-    if h <= 0 or w <= 0:
-        return np.zeros((output_size, output_size), dtype=np.uint8)
+    # پیدا کردن محدوده دقیق رقم (Bounding Box)
+    pts = np.argwhere(digit_mask > 0)
+    if pts.size == 0:
+        return canvas_gray, canvas_mask
 
-    content_size = (
-        int(settings.get("cell_extraction.digit_content_size", 20))
-        if content_size is None
-        else int(content_size)
-    )
+    y_min, x_min = pts.min(axis=0)
+    y_max, x_max = pts.max(axis=0)
 
-    content_size = max(1, min(content_size, output_size))
+    digit_w = (x_max - x_min) + 1
+    digit_h = (y_max - y_min) + 1
 
-    scale = min(content_size / w, content_size / h)
+    crop_gray = digit_gray[y_min : y_max + 1, x_min : x_max + 1]
+    crop_mask = digit_mask[y_min : y_max + 1, x_min : x_max + 1]
 
-    new_w = max(1, int(round(w * scale)))
-    new_h = max(1, int(round(h * scale)))
+    max_content_size = output_size - (padding * 2)
+    if max_content_size <= 0:
+        max_content_size = output_size
+
+    # محاسبه ضریب مقیاس متناسب بدون تغییر نسبت ابعاد (Aspect Ratio)
+    scale = min(max_content_size / digit_w, max_content_size / digit_h)
+
+    new_w = max(1, int(round(digit_w * scale)))
+    new_h = max(1, int(round(digit_h * scale)))
 
     interpolation = cv2.INTER_AREA if scale < 1.0 else cv2.INTER_CUBIC
-
-    resized = cv2.resize(
-        digit_gray,
-        (new_w, new_h),
-        interpolation=interpolation,
-    )
-
-    canvas = np.zeros((output_size, output_size), dtype=np.uint8)
+    resized_gray = cv2.resize(crop_gray, (new_w, new_h), interpolation=interpolation)
+    resized_mask = cv2.resize(crop_mask, (new_w, new_h), interpolation=interpolation)
+    _, resized_mask = cv2.threshold(resized_mask, 127, 255, cv2.THRESH_BINARY)
 
     x_offset = (output_size - new_w) // 2
     y_offset = (output_size - new_h) // 2
 
-    canvas[
-        y_offset:y_offset + new_h,
-        x_offset:x_offset + new_w,
-    ] = resized
+    canvas_gray[
+        y_offset : y_offset + new_h, x_offset : x_offset + new_w
+    ] = resized_gray
+    canvas_mask[
+        y_offset : y_offset + new_h, x_offset : x_offset + new_w
+    ] = resized_mask
 
-    return canvas
+    return canvas_gray, canvas_mask
+
 
 def is_cell_empty(
     inverted_gray: np.ndarray,
     min_ink_ratio: float | None = None,
     margin_ratio: float | None = None,
 ) -> bool:
-    """
-    تشخیص خالی‌بودن سلول با یک ماسک موقت Otsu.
+    """تشخیص خالی‌بودن سلول با یک ماسک موقت Otsu.
 
-    تصویر خروجی تغییر نمی‌کند. ناحیه‌ی اطراف سلول نادیده گرفته
-    می‌شود تا خطوط جدول باعث non-empty شدن خانه نشوند.
+    تصویر خروجی تغییر نمی‌کند. ناحیه‌ی اطراف سلول نادیده گرفته می‌شود تا خطوط جدول
+    باعث non-empty شدن خانه نشوند.
     """
     if inverted_gray.ndim != 2:
-        raise ValueError(
-            "inverted_gray must be a single-channel image"
-        )
+        raise ValueError("inverted_gray must be a single-channel image")
 
     min_ink_ratio = (
         float(
@@ -326,7 +109,7 @@ def is_cell_empty(
         float(
             settings.get(
                 "cell_extraction.empty_margin_ratio",
-                0.16,
+                0.08,
             )
         )
         if margin_ratio is None
@@ -351,12 +134,11 @@ def is_cell_empty(
     if inner.size == 0:
         return True
 
-    # فقط برای empty detection؛ خروجی مدل binary نمی‌شود.
     _, binary = cv2.threshold(
         inner,
         0,
         255,
-        cv2.THRESH_BINARY + cv2.THRESH_OTSU,
+        cv2.THRESH_BINARY,
     )
 
     inner_height, inner_width = binary.shape
@@ -380,15 +162,9 @@ def is_cell_empty(
         x = int(stats[label, cv2.CC_STAT_LEFT])
         y = int(stats[label, cv2.CC_STAT_TOP])
 
-        component_width = int(
-            stats[label, cv2.CC_STAT_WIDTH]
-        )
-        component_height = int(
-            stats[label, cv2.CC_STAT_HEIGHT]
-        )
-        component_area = int(
-            stats[label, cv2.CC_STAT_AREA]
-        )
+        component_width = int(stats[label, cv2.CC_STAT_WIDTH])
+        component_height = int(stats[label, cv2.CC_STAT_HEIGHT])
+        component_area = int(stats[label, cv2.CC_STAT_AREA])
 
         right = x + component_width
         bottom = y + component_height
@@ -415,6 +191,148 @@ def is_cell_empty(
 
     return True
 
+
+def detect_white_edge_margins(
+    mask: np.ndarray,
+    scan_depth: int = 4,
+    min_white_ratio: float = 0.70,
+) -> tuple[int, int, int, int]:
+    if mask.ndim != 2:
+        raise ValueError("mask must be a single-channel image")
+
+    height, width = mask.shape
+
+    scan_depth = max(
+        0,
+        min(
+            int(scan_depth),
+            height // 2,
+            width // 2,
+        ),
+    )
+
+    min_white_ratio = float(np.clip(min_white_ratio, 0.0, 1.0))
+
+    def is_white_margin(line: np.ndarray) -> bool:
+        if line.size == 0:
+            return False
+
+        # تعداد پیکسل‌های سفید همین سطر یا ستون
+        white_pixels = np.count_nonzero(line > 127)
+
+        # نسبت سفیدی فقط برای همین خط
+        white_ratio = white_pixels / line.size
+
+        return white_ratio >= min_white_ratio
+
+    top = 0
+    for index in range(scan_depth):
+        row = mask[index, :]
+
+        if not is_white_margin(row):
+            break
+
+        top += 1
+
+    bottom = 0
+    for index in range(scan_depth):
+        row = mask[height - 1 - index, :]
+
+        if not is_white_margin(row):
+            break
+
+        bottom += 1
+
+    left = 0
+    for index in range(scan_depth):
+        column = mask[:, index]
+
+        if not is_white_margin(column):
+            break
+
+        left += 1
+
+    right = 0
+    for index in range(scan_depth):
+        column = mask[:, width - 1 - index]
+
+        if not is_white_margin(column):
+            break
+
+        right += 1
+
+    return top, bottom, left, right
+
+
+def zero_margin_and_shift_inward(
+    image: np.ndarray,
+    margins: tuple[int, int, int, int],
+) -> np.ndarray:
+    """حاشیه‌های تشخیص‌داده‌شده را صفر می‌کند و محتوا را به‌اندازه تعداد خطوط
+
+    حاشیه، به سمت داخل تصویر جابه‌جا می‌کند.
+
+    top    -> شیفت به بالا
+    bottom -> شیفت به پایین
+    left   -> شیفت به چپ
+    right  -> شیفت به راست
+    """
+    if image.ndim != 2:
+        raise ValueError("image must be a single-channel image")
+
+    top, bottom, left, right = margins
+    height, width = image.shape
+
+    top = max(0, min(int(top), height))
+    bottom = max(0, min(int(bottom), height))
+    left = max(0, min(int(left), width))
+    right = max(0, min(int(right), width))
+
+    result = image.copy()
+
+    # اول خود خطوط مارجین را صفر کن
+    if top > 0:
+        result[:top, :] = 0
+
+    if bottom > 0:
+        result[height - bottom :, :] = 0
+
+    if left > 0:
+        result[:, :left] = 0
+
+    if right > 0:
+        result[:, width - right :] = 0
+
+    # جهت نهایی جابه‌جایی (اصلاح شده به سمت داخل تصویر)
+    shift_y = bottom - top
+    shift_x = right - left
+
+    shifted = np.zeros_like(result)
+
+    source_y1 = max(0, -shift_y)
+    source_y2 = min(height, height - shift_y)
+
+    source_x1 = max(0, -shift_x)
+    source_x2 = min(width, width - shift_x)
+
+    destination_y1 = max(0, shift_y)
+    destination_y2 = destination_y1 + (source_y2 - source_y1)
+
+    destination_x1 = max(0, shift_x)
+    destination_x2 = destination_x1 + (source_x2 - source_x1)
+
+    if source_y2 > source_y1 and source_x2 > source_x1:
+        shifted[
+            destination_y1:destination_y2,
+            destination_x1:destination_x2,
+        ] = result[
+            source_y1:source_y2,
+            source_x1:source_x2,
+        ]
+
+    return shifted
+
+
 def clean_cell(
     cell: np.ndarray,
     binary_cell: np.ndarray,
@@ -422,119 +340,97 @@ def clean_cell(
     output_size: int | None = None,
     min_area_ratio: float | None = None,
 ) -> tuple[np.ndarray, np.ndarray, bool]:
-    """
-    binary فقط برای پیدا کردن bbox رقم استفاده می‌شود.
-    خروجی نهایی از grayscale اصلی گرفته می‌شود، نه از mask.
+    del margin_ratio
+    del min_area_ratio
 
-    خروجی:
-        cleaned_grayscale
-        debug_mask
-        empty
-    """
-    if cell.ndim == 3:
-        gray = cv2.cvtColor(
-            cell,
-            cv2.COLOR_BGR2GRAY,
-        )
-    elif cell.ndim == 2:
-        gray = cell.copy()
-    else:
-        raise ValueError(f"Unsupported cell shape: {cell.shape}")
+    gray = cell.copy()
 
-    if binary_cell.ndim == 3:
-        binary_gray = cv2.cvtColor(
-            binary_cell,
-            cv2.COLOR_BGR2GRAY,
-        )
-    elif binary_cell.ndim == 2:
-        binary_gray = binary_cell.copy()
-    else:
-        raise ValueError(
-            f"Unsupported binary cell shape: {binary_cell.shape}"
-        )
-
-    expected_size = int(
-        settings.get(
-            "cell_extraction.digit_input_size",
-            28,
-        )
-    )
+    expected_size = int(settings.get("cell_extraction.digit_input_size", 28))
 
     output_size = expected_size if output_size is None else int(output_size)
 
-    expected_shape = (expected_size, expected_size)
+    # مهم: polarity ماسک را یکسان کن.
+    mask = normalize_binary_mask(binary_cell)
 
-    if gray.shape != expected_shape:
-        raise ValueError(
-            f"Expected grayscale cell shape {expected_shape}, received {gray.shape}"
-        )
+    # مطمئن شو ماسک فقط 0 و 255 دارد.
+    mask = np.where(
+        mask > 0,
+        255,
+        0,
+    ).astype(np.uint8)
 
-    if binary_gray.shape != expected_shape:
-        raise ValueError(
-            f"Expected binary cell shape {expected_shape}, received {binary_gray.shape}"
-        )
-
-    # رقم روشن، پس‌زمینه تیره
     inverted_gray = cv2.bitwise_not(gray)
 
-    digit_bbox, empty = extract_digit_bbox(
-        binary_cell=binary_gray,
-        margin_ratio=margin_ratio,
-        min_area_ratio=min_area_ratio,
+    edge_scan_depth = int(settings.get("cell_extraction.edge_margin_scan_depth", 8))
+
+    edge_min_white_ratio = float(
+        settings.get(
+            "cell_extraction.edge_margin_min_white_ratio",
+            0.4,
+        )
     )
 
-    # debug mask فقط برای ذخیره و مشاهده
-    debug_mask = normalize_binary_mask(binary_gray)
-    
-    empty = is_cell_empty(
-        inverted_gray=inverted_gray,
+    # فقط از روی ماسک تشخیص بده.
+    margins = detect_white_edge_margins(
+        mask,
+        scan_depth=edge_scan_depth,
+        min_white_ratio=edge_min_white_ratio,
     )
+
+    # ماسک و grayscale باید دقیقاً یکسان جابه‌جا شوند.
+    shifted_mask = zero_margin_and_shift_inward(
+        mask,
+        margins,
+    )
+
+    shifted_gray = zero_margin_and_shift_inward(
+        inverted_gray,
+        margins,
+    )
+
+    # حالا این دو کاملاً هم‌راستا هستند.
+    cleaned = np.where(
+        shifted_mask > 0,
+        shifted_gray,
+        0,
+    ).astype(np.uint8)
+
+    empty = is_cell_empty(
+        inverted_gray=cleaned,
+    )
+
     if empty:
-        return (
-            np.zeros(
-                (output_size, output_size),
-                dtype=np.uint8,
-            ),
-            debug_mask,
-            True,
+        empty_image = np.zeros(
+            (output_size, output_size),
+            dtype=np.uint8,
         )
 
-    if empty or digit_bbox is None:
-        empty_image = np.zeros_like(inverted_gray, dtype=np.uint8)
-        return empty_image, debug_mask, True
+        return empty_image, np.zeros((output_size, output_size), dtype=np.uint8), True
 
-    x1, y1, x2, y2 = digit_bbox
-
-    # فقط bbox از grayscale واقعی crop می‌شود
-    digit_gray = inverted_gray[y1:y2, x1:x2]
-
-    if digit_gray.size == 0:
-        empty_image = np.zeros_like(inverted_gray, dtype=np.uint8)
-        return empty_image, debug_mask, True
-
-    cleaned = center_digit_grayscale(
-        digit_gray=digit_gray,
-        output_size=output_size,
-    )
-
-    # نرمال‌سازی ملایم contrast
     nonzero = cleaned[cleaned > 0]
+
     if nonzero.size > 0:
         low = float(np.percentile(nonzero, 5))
         high = float(np.percentile(nonzero, 99))
 
         if high > low:
-            cleaned = cleaned.astype(np.float32)
-            cleaned = (cleaned - low) * (255.0 / (high - low))
-            cleaned = np.clip(cleaned, 0, 255).astype(np.uint8)
+            cleaned_float = cleaned.astype(np.float32)
 
-    # لبه‌ها صفر
-    cleaned[0, :] = 0
-    cleaned[-1, :] = 0
-    cleaned[:, 0] = 0
-    cleaned[:, -1] = 0
+            cleaned_float = (cleaned_float - low) * (255.0 / (high - low))
 
-    return cleaned, debug_mask, False
+            cleaned = np.clip(
+                cleaned_float,
+                0,
+                255,
+            ).astype(np.uint8)
+
+    # انتقال رقم به مرکز بوم و بزرگ‌سازی متناسب و باکیفیت
+    # padding_config = int(settings.get("cell_extraction.digit_padding", 4))
+    # centered_cleaned, centered_mask = center_and_scale_digit(
+    #     cleaned, shifted_mask, output_size=output_size, padding=padding_config
+    # )
+
+    return cleaned, mask, False
 
 
 def make_montage(
@@ -544,16 +440,9 @@ def make_montage(
     del cell_size
 
     if len(cells) != 81:
-        raise ValueError(
-            f"Expected 81 cells, received {len(cells)}"
-        )
+        raise ValueError(f"Expected 81 cells, received {len(cells)}")
 
     first_cell = cells[0]
-
-    if first_cell.ndim != 2:
-        raise ValueError(
-            "cells must contain grayscale images"
-        )
 
     cell_height, cell_width = first_cell.shape
 
@@ -567,18 +456,14 @@ def make_montage(
 
     for index, cell in enumerate(cells):
         if cell.ndim != 2:
-            raise ValueError(
-                f"Cell {index} is not grayscale"
-            )
+            raise ValueError(f"Cell {index} is not grayscale")
 
         if cell.shape != (
             cell_height,
             cell_width,
         ):
             raise ValueError(
-                f"Cell {index} has shape {cell.shape}, "
-                f"expected "
-                f"{(cell_height, cell_width)}"
+                f"Cell {index} has shape {cell.shape}, expected {(cell_height, cell_width)}"
             )
 
         row, column = divmod(index, 9)
@@ -609,23 +494,7 @@ def extract_cells(
     | list[bool]
     | list[str],
 ]:
-    """
-    warped_bgr:
-        تصویر رنگی/خاکستری warp‌شده برای گرفتن شدت واقعی رقم.
 
-    warped_binary:
-        تصویر binary همان warp و دقیقاً با همان geometry،
-        برای ساختن mask رقم.
-    """
-    if warped_bgr is None or warped_bgr.size == 0:
-        raise ValueError(
-            "warped_bgr is empty"
-        )
-
-    if warped_binary is None or warped_binary.size == 0:
-        raise ValueError(
-            "warped_binary is empty"
-        )
 
     output_dir = Path(output_dir)
 
@@ -643,40 +512,20 @@ def extract_cells(
 
     height, width = warped_bgr.shape[:2]
 
-    binary_height, binary_width = (
-        warped_binary.shape[:2]
-    )
+    binary_height, binary_width = warped_binary.shape[:2]
 
-    if (
-        binary_height != height
-        or binary_width != width
-    ):
+    if binary_height != height or binary_width != width:
         raise ValueError(
-            f"warped_bgr and warped_binary sizes differ: "
-            f"BGR={width}x{height}, "
-            f"binary={binary_width}x{binary_height}"
+            f"warped_bgr and warped_binary sizes differ: BGR={width}x{height}, binary={binary_width}x{binary_height}"
         )
 
-    expected_cell_size = int(
-        settings.get(
-            "cell_extraction.digit_input_size",
-            28,
-        )
-    )
+    expected_cell_size = int(settings.get("cell_extraction.digit_input_size", 28))
 
-    expected_board_size = (
-        expected_cell_size * 9
-    )
+    expected_board_size = expected_cell_size * 9
 
-    if (
-        height != expected_board_size
-        or width != expected_board_size
-    ):
+    if height != expected_board_size or width != expected_board_size:
         raise ValueError(
-            f"Expected warped board size "
-            f"{expected_board_size}x"
-            f"{expected_board_size}, "
-            f"but received {width}x{height}."
+            f"Expected warped board size {expected_board_size}x{expected_board_size}, but received {width}x{height}."
         )
 
     cell_height = height // 9
@@ -690,12 +539,7 @@ def extract_cells(
     empty_flags: list[bool] = []
     cell_filenames: list[str] = []
 
-    save_cells = bool(
-        settings.get(
-            "cell_extraction.save_cells",
-            True,
-        )
-    )
+    save_cells = bool(settings.get("cell_extraction.save_cells", True))
 
     for row in range(9):
         for column in range(9):
@@ -738,12 +582,8 @@ def extract_cells(
 
             index = row * 9 + column
 
-            cell_filename = (
-                f"cells/cell_{index:02d}.png"
-            )
-            mask_filename = (
-                f"cell_masks/mask_{index:02d}.png"
-            )
+            cell_filename = f"cells/cell_{index:02d}.png"
+            mask_filename = f"cell_masks/mask_{index:02d}.png"
 
             if save_cells:
                 save_image(
@@ -757,9 +597,7 @@ def extract_cells(
                 )
 
             raw_cells.append(raw_gray)
-            binary_cells.append(
-                normalize_binary_mask(binary_gray)
-            )
+            binary_cells.append(normalize_binary_mask(binary_gray))
             digit_masks.append(digit_mask)
             cleaned_cells.append(cleaned)
 
@@ -772,34 +610,26 @@ def extract_cells(
     )
 
     save_image(
-        output_dir
-        / "07_binary_cells_montage.png",
+        output_dir / "07_binary_cells_montage.png",
         make_montage(binary_cells),
     )
 
     save_image(
-        output_dir
-        / "08_digit_masks_montage.png",
+        output_dir / "08_digit_masks_montage.png",
         make_montage(digit_masks),
     )
 
-    montage_path = (
-        "09_masked_grayscale_montage.png"
-    )
+    montage_path = "09_masked_grayscale_montage.png"
 
-    cleaned_montage = make_montage(
-        cleaned_cells
-    )
+    cleaned_montage = make_montage(cleaned_cells)
 
     save_image(
         output_dir / montage_path,
         cleaned_montage,
     )
 
-    # نام قدیمی برای سازگاری با بخش‌های دیگر
     save_image(
-        output_dir
-        / "07_inverted_grayscale_montage.png",
+        output_dir / "07_inverted_grayscale_montage.png",
         cleaned_montage,
     )
 
@@ -807,11 +637,8 @@ def extract_cells(
         "raw_cells": raw_cells,
         "binary_cells": binary_cells,
         "digit_masks": digit_masks,
-
-        # برای سازگاری با کدهای قبلی
         "clean_cells": cleaned_cells,
         "inverted_cells": cleaned_cells,
-
         "empty_flags": empty_flags,
         "cell_filenames": cell_filenames,
         "cells_montage": cleaned_montage,

@@ -12,9 +12,28 @@ export default function App() {
   return (
     <main className="appShell">
       <Header />
+
       <div className="layout">
         <section className="leftColumn">
-          <ImageUploader previewUrl={solver.previewUrl} onImageSelected={solver.chooseImage} />
+          <ImageUploader
+            previewUrl={solver.previewUrl}
+            onImageSelected={solver.chooseImage}
+          />
+
+          <label>
+            Digit language
+            <select
+              value={solver.language}
+              disabled={solver.isProcessing}
+              onChange={(event) =>
+                solver.setLanguage(event.target.value as 'en' | 'fa')
+              }
+            >
+              <option value="en">English</option>
+              <option value="fa">فارسی</option>
+            </select>
+          </label>
+
           <Controls
             isProcessing={solver.isProcessing}
             isSolving={solver.isSolving}
@@ -23,9 +42,15 @@ export default function App() {
             onReset={solver.resetGrid}
             onClear={solver.clearAll}
           />
+
           <div className="messageBox">
             <strong>Status:</strong> {solver.message}
             <br />
+
+            <strong>Language:</strong>{' '}
+            {solver.language === 'fa' ? 'فارسی' : 'English'}
+            <br />
+
             <strong>Model:</strong> {solver.modelStatus}
           </div>
         </section>
@@ -35,6 +60,7 @@ export default function App() {
             <h2>Detected Sudoku Grid</h2>
             <p>Correct any wrong cells before solving.</p>
           </div>
+
           <SudokuGrid
             grid={solver.grid}
             originalGrid={solver.originalGrid}
@@ -42,8 +68,12 @@ export default function App() {
             lowConfidenceSet={solver.lowConfidenceSet}
             onCellChange={solver.updateCell}
           />
+
           {solver.lowConfidenceSet.size > 0 ? (
-            <div className="warningBox">Highlighted cells have low confidence. Please verify and correct them if needed.</div>
+            <div className="warningBox">
+              Highlighted cells have low confidence. Please verify and
+              correct them if needed.
+            </div>
           ) : null}
         </section>
 

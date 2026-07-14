@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
+from typing import Literal
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -30,17 +31,21 @@ def health() -> dict[str, str]:
 
 
 @app.post("/api/predict", response_model=PredictResponse)
-async def predict(image: UploadFile = File(...)):
+async def predict(
+    image: UploadFile = File(...),
+    language: Literal["en", "fa"] = Form("en"),
+):
     if not image.content_type or not image.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Please upload an image file.")
 
     suffix = Path(image.filename or "upload.png").suffix or ".png"
     upload_path = settings.uploads_dir / f"upload_{Path(image.filename or 'image').stem}{suffix}"
+
     with upload_path.open("wb") as buffer:
         shutil.copyfileobj(image.file, buffer)
 
     try:
-        return run_prediction_pipeline(upload_path)
+        return run_prediction_pipeline(upload_path, language=language)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

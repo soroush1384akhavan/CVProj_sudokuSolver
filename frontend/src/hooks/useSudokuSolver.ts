@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { predictSudoku, solveSudoku } from '../api/sudokuApi';
+import type { DigitLanguage } from '../api/sudokuApi';
 import type { Board, PhaseImage } from '../types';
 import { cloneBoard, emptyBoard } from '../utils/board';
 
@@ -16,6 +17,7 @@ export function useSudokuSolver() {
   const [isSolving, setIsSolving] = useState(false);
   const [message, setMessage] = useState('Upload a Sudoku image to begin.');
   const [modelStatus, setModelStatus] = useState('Model status will appear here.');
+  const [language, setLanguage] = useState<DigitLanguage>('en');
 
   const lowConfidenceSet = useMemo(() => {
     return new Set(lowConfidenceCells.map((cell) => `${cell.row}-${cell.col}`));
@@ -32,10 +34,13 @@ export function useSudokuSolver() {
       setMessage('Please select an image first.');
       return;
     }
+
     setIsProcessing(true);
     setMessage('Processing image...');
+
     try {
-      const result = await predictSudoku(selectedImage);
+      const result = await predictSudoku(selectedImage, language);
+
       setRunId(result.run_id);
       setGrid(result.board);
       setOriginalGrid(cloneBoard(result.board));
@@ -54,14 +59,21 @@ export function useSudokuSolver() {
   async function solve() {
     setIsSolving(true);
     setMessage('Solving puzzle...');
+
     try {
       const result = await solveSudoku(grid, runId, originalGrid);
+
       if (result.success && result.solved_board) {
         setGrid(result.solved_board);
+
         if (result.phases.length > 0) {
-          setPhases((prev) => [...prev.filter((p) => !p.key.startsWith('solved')), ...result.phases]);
+          setPhases((prev) => [
+            ...prev.filter((phase) => !phase.key.startsWith('solved')),
+            ...result.phases,
+          ]);
         }
       }
+
       setMessage(result.message);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to solve puzzle.');
@@ -109,6 +121,8 @@ export function useSudokuSolver() {
     isSolving,
     message,
     modelStatus,
+    language,
+    setLanguage,
     chooseImage,
     processImage,
     solve,

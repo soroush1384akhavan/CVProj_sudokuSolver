@@ -64,21 +64,40 @@ def _build_sudoku_sources(
     datasets: list[Dataset] = []
     summary: dict[str, int] = {}
 
-    # for root in _as_list(sudoku_cfg.get("generated_roots")):
-    #     root_path = _resolve_path(root)
-    #     if not root_path.is_dir():
-    #         print(f"Warning: generated Sudoku dataset not found: {root_path}")
-    #         continue
+    for root in _as_list(sudoku_cfg.get("generated_roots")):
+        root_path = _resolve_path(root)
 
-    #     dataset = GeneratedSudokuCellDataset(
-    #         root_dir=root_path,
-    #         cache_dir=cache_root / "generated" / root_path.name,
-    #         include_empty_cells=include_empty_cells,
-    #         transform=transform,
-    #         refresh_cache=refresh_cache,
-    #     )
-    #     datasets.append(dataset)
-    #     summary[f"generated:{root_path.name}"] = len(dataset)
+        if not root_path.is_dir():
+            print(f"Warning: generated Sudoku dataset not found: {root_path}")
+            continue
+
+        dataset = GeneratedSudokuCellDataset(
+            root_dir=root_path,
+            cache_dir=cache_root / "generated",
+
+            languages=("en",),
+            strict_languages=True,
+
+            include_empty_cells=include_empty_cells,
+            transform=transform,
+            refresh_cache=refresh_cache,
+
+            skip_visually_empty_nonzero=True,
+            min_content_area_ratio=0.006,
+            min_component_area_ratio=0.0015,
+
+            return_language=False,
+            return_metadata=False,
+        )
+
+        datasets.append(dataset)
+        print(
+            f"Generated Sudoku dataset loaded: "
+            f"language=en | samples={len(dataset)} | root={root_path}"
+        )
+
+
+        summary[f"generated:{root_path.name}"] = len(dataset)
 
     for root in _as_list(sudoku_cfg.get("dat_roots")):
         root_path = _resolve_path(root)
@@ -101,18 +120,31 @@ def _build_sudoku_sources(
 
     return datasets, summary
 
-
-def _board_key(dataset: Dataset, source_index: int, local_index: int) -> str:
+def _board_key(
+    dataset: Dataset,
+    source_index: int,
+    local_index: int,
+) -> str:
     """
-    برمی‌گردونه یک کلید که همه‌ی خونه‌های یک تخته‌ی سودوکوی یکسان رو گروه‌بندی
-    می‌کنه، تا در split train/val، خونه‌های یک تخته همیشه با هم بمونن
-    (جلوگیری از data leakage بین train و val).
+    همه سلول‌های یک تصویر سودوکو را در یک گروه نگه می‌دارد
+    تا بین train و validation پخش نشوند.
     """
     samples = getattr(dataset, "samples", None)
+
     if isinstance(samples, list) and local_index < len(samples):
-        cell_path = Path(samples[local_index][0])
-        board_dir = cell_path.parent.parent
-        return f"src{source_index}:{board_dir.resolve()}"
+        sample = samples[local_index]
+
+        # دیتالودر جدید: GeneratedSudokuCellSample
+        cell_path = getattr(sample, "cell_path", None)
+
+        # سازگاری با دیتالودرهای قدیمی که sample به شکل tuple/list است
+        if cell_path is None and isinstance(sample, (tuple, list)) and sample:
+            cell_path = sample[0]
+
+        if cell_path is not None:
+            board_dir = Path(cell_path).parent.parent
+            return f"src{source_index}:{board_dir.resolve()}"
+
     return f"src{source_index}:sample{local_index}"
 
 
@@ -355,7 +387,23 @@ def save_misclassified_samples(
                 )
 
                 source_sample = source_dataset.samples[source_index]
-                source_cell_path = Path(source_sample[0])
+
+                source_cell_path_value = getattr(source_sample, "cell_path", None)
+
+                if (
+                    source_cell_path_value is None
+                    and isinstance(source_sample, (tuple, list))
+                    and source_sample
+                ):
+                    source_cell_path_value = source_sample[0]
+
+                if source_cell_path_value is None:
+                    raise ValueError(
+                        "Could not determine source cell path for "
+                        f"dataset={type(source_dataset).__name__}, index={source_index}"
+                    )
+
+                source_cell_path = Path(source_cell_path_value)
 
                 board_name = source_cell_path.parent.parent.name
                 cell_name = source_cell_path.stem

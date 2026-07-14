@@ -37,6 +37,138 @@ def get_phase4_config() -> dict[str, Any]:
 
     return config
 
+class RandomSudokuGridLines(A.ImageOnlyTransform):
+
+    def __init__(
+        self,
+        max_horizontal_lines: int = 2,
+        max_vertical_lines: int = 2,
+        thickness_range: tuple[int, int] = (1, 3),
+        edge_ratio: float = 0.22,
+        line_value_range: tuple[int, int] = (0, 55),
+        middle_line_probability: float = 0.20,
+        p: float = 0.35,
+    ):
+        super().__init__(p=p)
+
+        self.max_horizontal_lines = max_horizontal_lines
+        self.max_vertical_lines = max_vertical_lines
+        self.thickness_range = thickness_range
+        self.edge_ratio = edge_ratio
+        self.line_value_range = line_value_range
+        self.middle_line_probability = middle_line_probability
+
+    def apply(self, image: np.ndarray, **params) -> np.ndarray:
+        result = image.copy()
+        height, width = result.shape[:2]
+
+        horizontal_count = self.py_random.randint(
+            0,
+            self.max_horizontal_lines,
+        )
+        vertical_count = self.py_random.randint(
+            0,
+            self.max_vertical_lines,
+        )
+
+        # تضمین می‌کند وقتی transform اجرا شد حداقل یک خط داشته باشیم.
+        if horizontal_count == 0 and vertical_count == 0:
+            if self.py_random.random() < 0.5:
+                horizontal_count = 1
+            else:
+                vertical_count = 1
+
+        for _ in range(horizontal_count):
+            y = self._random_line_position(
+                length=height,
+                allow_middle=True,
+            )
+            thickness = self.py_random.randint(
+                self.thickness_range[0],
+                self.thickness_range[1],
+            )
+            line_value = self.py_random.randint(
+                self.line_value_range[0],
+                self.line_value_range[1],
+            )
+
+            cv2.line(
+                result,
+                (0, y),
+                (width - 1, y),
+                color=self._color_for_image(result, line_value),
+                thickness=thickness,
+                lineType=cv2.LINE_8,
+            )
+
+        for _ in range(vertical_count):
+            x = self._random_line_position(
+                length=width,
+                allow_middle=True,
+            )
+            thickness = self.py_random.randint(
+                self.thickness_range[0],
+                self.thickness_range[1],
+            )
+            line_value = self.py_random.randint(
+                self.line_value_range[0],
+                self.line_value_range[1],
+            )
+
+            cv2.line(
+                result,
+                (x, 0),
+                (x, height - 1),
+                color=self._color_for_image(result, line_value),
+                thickness=thickness,
+                lineType=cv2.LINE_8,
+            )
+
+        return result
+
+    def _random_line_position(
+        self,
+        length: int,
+        allow_middle: bool,
+    ) -> int:
+        if (
+            allow_middle
+            and self.py_random.random() < self.middle_line_probability
+        ):
+            return self.py_random.randint(
+                max(0, int(length * 0.25)),
+                max(0, int(length * 0.75)),
+            )
+
+        edge_size = max(1, int(length * self.edge_ratio))
+
+        if self.py_random.random() < 0.5:
+            return self.py_random.randint(0, edge_size)
+
+        return self.py_random.randint(
+            max(0, length - edge_size - 1),
+            max(0, length - 1),
+        )
+
+    @staticmethod
+    def _color_for_image(
+        image: np.ndarray,
+        value: int,
+    ):
+        if image.ndim == 2:
+            return value
+
+        return tuple([value] * image.shape[2])
+
+    def get_transform_init_args_names(self):
+        return (
+            "max_horizontal_lines",
+            "max_vertical_lines",
+            "thickness_range",
+            "edge_ratio",
+            "line_value_range",
+            "middle_line_probability",
+            )
 
 class DigitTransform:
     def __init__(
@@ -77,10 +209,10 @@ class DigitTransform:
             A.PadIfNeeded(
                 min_height=size + pad_extra,
                 min_width=size + pad_extra,
-                border_mode=cv2.BORDER_CONSTANT,
-                fill=0,
+                border_mode=cv2.BORDER_REPLICATE,
                 p=1.0,
             ),
+
             A.Affine(
                 translate_percent={
                     "x": (-translate_percent, translate_percent),
@@ -92,20 +224,44 @@ class DigitTransform:
                     "x": (-shear_limit, shear_limit),
                     "y": (-shear_limit, shear_limit),
                 },
-                border_mode=cv2.BORDER_CONSTANT,
-                fill=0,
+                border_mode=cv2.BORDER_REPLICATE,
                 p=affine_p,
             ),
+
             A.RandomBrightnessContrast(
                 brightness_limit=brightness_limit,
                 contrast_limit=contrast_limit,
                 p=brightness_contrast_p,
             ),
+
+            # نویز گوسی ملایم
+            A.GaussNoise(
+                std_range=(0.02, 0.08),
+                mean_range=(0.0, 0.0),
+                per_channel=False,
+                p=0.35,
+            ),
+
+            # Blur بعد از نویز، برای طبیعی‌تر شدن نویز
             A.GaussianBlur(
                 blur_limit=(3, 3),
                 p=blur_p,
             ),
-            A.Resize(size, size),
+
+            A.Resize(
+                height=size,
+                width=size,
+            ),
+            
+            RandomSudokuGridLines(
+                max_horizontal_lines=2,
+                max_vertical_lines=2,
+                thickness_range=(1, 1),
+                edge_ratio=0.0,
+                middle_line_probability=0.50,
+                line_value_range=(140, 240),
+                p=0.4,
+            ),
         ]
 
         if self.augment:
@@ -155,12 +311,7 @@ class DigitTransform:
 
 
 def _normalize_languages(languages: list[str] | str | None) -> set[str]:
-    """
-    ورودی languages رو نرمالایز می‌کنه.
 
-    مقادیر معتبر: "fa" (فارسی، یعنی Hoda)، "en" (انگلیسی، یعنی MNIST + Chars74K).
-    اگه None یا خالی بود، هر دو در نظر گرفته می‌شن (رفتار پیش‌فرض قدیمی).
-    """
     if languages is None:
         return {"fa", "en"}
 
@@ -181,15 +332,6 @@ def _normalize_languages(languages: list[str] | str | None) -> set[str]:
 
 
 def build_digit_dataloaders(languages: list[str] | str | None = None):
-    """
-    languages: کدوم زبان‌ها وارد training/eval بشن.
-        - None یا ["fa", "en"] -> هر دو (پیش‌فرض، رفتار قدیمی)
-        - ["en"] -> فقط MNIST + Chars74K (انگلیسی/چاپی)
-        - ["fa"] -> فقط Hoda (فارسی)
-
-    اگه پارامتر پاس داده نشه، از کانفیگ (digit_recognition.data.languages) خونده می‌شه؛
-    اگه اونجا هم نبود، هر دو زبان استفاده می‌شن.
-    """
     backend_root = BACKEND_ROOT
 
     phase_cfg = get_phase4_config()

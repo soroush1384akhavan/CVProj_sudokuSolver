@@ -27,16 +27,17 @@ def phase_item(run_id: str, key: str, title: str, description: str, filename: st
     }
 
 
-def run_prediction_pipeline(image_path: Path) -> dict[str, Any]:
+def run_prediction_pipeline(image_path: Path, language: str = "en") -> dict[str, Any]:
     run_id, out_dir = create_run_dir()
     image_bgr = imread_color(image_path)
     save_image(out_dir / "00_uploaded.png", image_bgr)
 
     phase1 = preprocess_image(image_bgr, out_dir)
     phase2 = find_sudoku_grid(phase1["original"], phase1["threshold"], out_dir)  # type: ignore[arg-type]
-    phase3 = extract_cells(phase2["warped"], out_dir)  # type: ignore[arg-type]
+    phase3 = extract_cells(phase2["warped"], phase2["warped_binary"] ,out_dir)  # type: ignore[arg-type]
 
-    classifier = PyTorchDigitClassifier()
+    print(f"[PIPELINE] selected language: {language}")
+    classifier = classifier = PyTorchDigitClassifier(language=language)
     board, confidence, low_confidence_cells = classifier.predict_board(
         phase3["clean_cells"],  # type: ignore[arg-type]
         phase3["empty_flags"],  # type: ignore[arg-type]

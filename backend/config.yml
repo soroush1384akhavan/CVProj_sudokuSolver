@@ -35,13 +35,19 @@ grid_detection:
 
 cell_extraction:
   margin_ratio: 0.08
-  empty_pixel_ratio_threshold: 0.05
+  empty_pixel_ratio_threshold: 0.08
   digit_input_size: 28
   montage_cell_size: 40
   save_cells: true
 
 digit_recognition:
   model_path: models/digit_cnn.pth
+
+  default_language: "en" 
+  model_paths: 
+    en: "models/digit_recognition/en/digit_cnn.pth" 
+    fa: "models/digit_recognition/fa/digit_cnn.pth"
+
   confidence_threshold: 0.75
   class_names:
     0: empty
@@ -100,7 +106,7 @@ digit_recognition:
       validation_split: 0.1
       cache_dir: "storage/sudoku/cell_cache"
       generated_roots:
-        - "storage/sudoku/synthetic/sudoku_medium_20260712_130818_411923_seed_274979083"
+      - "sudoku_runs/sudoku_medium_20260714_151427_563299_seed_1701254515"
       dat_roots:
       - "storage/sudoku/raw/v1_training/v1_training"
       - "storage/sudoku/raw/v2_train/v2_train"

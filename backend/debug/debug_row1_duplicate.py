@@ -17,7 +17,7 @@ from phases.phase_03_cell_extraction.cell_extraction import extract_cells
 from phases.phase_04_digit_recognition.src.classifier import PyTorchDigitClassifier
 
 
-IMAGE_PATH = "storage/sudoku/raw/v1_test/v1_test/image199.jpg"
+IMAGE_PATH = "storage/sudoku/raw/v1_test/v1_test/image50.jpg"
 DEBUG_DIR = Path("storage/sudoku/debug_row_check")
 
 # ردیف دلخواه برای نمایش، عدد انسانی از 1 تا 9

@@ -95,6 +95,82 @@ PREFERRED_EN_KEYWORDS = [
     "calibri",
     "verdana",
     "segoe",
+    "roboto",
+    "open sans",
+    "opensans",
+    "lato",
+    "montserrat",
+    "ubuntu",
+    "courier",
+    "georgia",
+    "cambria",
+    "candara",
+    "consola",
+    "liberation",
+    "source sans",
+    "sourcesans",
+    "inter",
+    "helvetica",
+    "myriad",
+    "garamond",
+]
+
+ENGLISH_EXCLUDED_FONT_KEYWORDS = [
+    "azarmehr",
+    "vazir",
+    "vazirmatn",
+    "iransans",
+    "nazanin",
+    "shabnam",
+    "sahel",
+    "yekan",
+    "persian",
+    "farsi",
+    "arabic",
+    "urdu",
+]
+
+ENGLISH_CURATED_FONT_KEYWORDS = [
+    "arial",
+    "calibri",
+    "verdana",
+    "tahoma",
+    "timesnewroman",
+    "times new roman",
+    "times",
+    "georgia",
+    "cambria",
+    "candara",
+    "couriernew",
+    "courier new",
+    "consola",
+    "consolas",
+    "segoeui",
+    "segoe ui",
+    "dejavusans",
+    "dejavu sans",
+    "dejavuserif",
+    "dejavu serif",
+    "liberationsans",
+    "liberation sans",
+    "liberationserif",
+    "liberation serif",
+    "roboto",
+    "opensans",
+    "open sans",
+    "lato",
+    "ubuntu",
+    "inter",
+]
+
+SYSTEM_FONT_DIR_CANDIDATES = [
+    Path("C:/Windows/Fonts"),
+    Path("/usr/share/fonts"),
+    Path("/usr/local/share/fonts"),
+    Path.home() / ".fonts",
+    Path.home() / ".local/share/fonts",
+    Path("/Library/Fonts"),
+    Path("/System/Library/Fonts"),
 ]
 
 
@@ -236,13 +312,11 @@ def is_bad_font_file(font_path):
     return any(k in name for k in BAD_FONT_KEYWORDS)
 
 
-def collect_font_paths(font_dir="Fonts"):
+def collect_font_paths(font_dir="Fonts", include_system_fonts=True):
     """
-    مسیر فونت را مقاوم‌تر پیدا می‌کند.
-    اگر --font-dir نسبی باشد، چند جای رایج را امتحان می‌کند:
-    1) مسیر فعلی ترمینال
-    2) کنار همین فایل py
-    3) یک و دو سطح بالاتر از همین فایل
+    مسیر فونت‌ها را مقاوم‌تر پیدا می‌کند.
+    علاوه بر --font-dir، در صورت نیاز فونت‌های سیستمی رایج را هم بررسی می‌کند
+    تا برای انگلیسی بتوان از فونت‌های معروف و استاندارد استفاده کرد.
     """
     font_paths = []
     seen = set()
@@ -260,38 +334,42 @@ def collect_font_paths(font_dir="Fonts"):
             safe_parent(SCRIPT_DIR, 3) / raw_font_dir,
         ]
 
-    font_dir_path = None
+    if include_system_fonts:
+        candidates.extend(SYSTEM_FONT_DIR_CANDIDATES)
+
+    unique_candidates = []
+    seen_candidates = set()
+    for candidate in candidates:
+        candidate = candidate.resolve()
+        key = str(candidate)
+        if key not in seen_candidates:
+            seen_candidates.add(key)
+            unique_candidates.append(candidate)
 
     print("[FONT] cwd:", Path.cwd())
     print("[FONT] candidates:")
-    for candidate in candidates:
-        candidate = candidate.resolve()
+    for candidate in unique_candidates:
         print("   ", candidate, "| exists:", candidate.exists())
-        if font_dir_path is None and candidate.exists() and candidate.is_dir():
-            font_dir_path = candidate
 
-    if font_dir_path is None:
-        print("[FONT] No font directory found.")
-        return []
-
-    print("[FONT] using:", font_dir_path)
-
-    for path in font_dir_path.rglob("*"):
-        if not path.is_file():
+    for font_dir_path in unique_candidates:
+        if not font_dir_path.exists() or not font_dir_path.is_dir():
             continue
 
-        if path.suffix.lower() not in FONT_EXTENSIONS:
-            continue
+        for path in font_dir_path.rglob("*"):
+            if not path.is_file():
+                continue
 
-        if is_bad_font_file(path):
-            print("[FONT] skipped bad/icon font:", path.name)
-            continue
+            if path.suffix.lower() not in FONT_EXTENSIONS:
+                continue
 
-        resolved = str(path.resolve())
-        if resolved not in seen:
-            seen.add(resolved)
-            font_paths.append(path)
-            print("[FONT] found:", path.name)
+            if is_bad_font_file(path):
+                print("[FONT] skipped bad/icon font:", path.name)
+                continue
+
+            resolved = str(path.resolve())
+            if resolved not in seen:
+                seen.add(resolved)
+                font_paths.append(path)
 
     print("[FONT] total candidate fonts:", len(font_paths))
     return font_paths
@@ -350,6 +428,77 @@ def font_supports_digits_safely(font_path, style, size=42):
     return True
 
 
+def count_different_digit_pairs(font, digits_a, digits_b):
+    different_pairs = 0
+    comparable_pairs = 0
+
+    for ch_a, ch_b in zip(digits_a, digits_b):
+        sig_a = glyph_signature(font, ch_a)
+        sig_b = glyph_signature(font, ch_b)
+
+        if sig_a is None or sig_b is None:
+            continue
+
+        comparable_pairs += 1
+        if sig_a != sig_b:
+            different_pairs += 1
+
+    return different_pairs, comparable_pairs
+
+
+def is_farsi_digit_font_name(font_path):
+    name = Path(font_path).stem.lower()
+    normalized = name.replace("_", "-").replace(" ", "-")
+    tokens = [token for token in normalized.split("-") if token]
+
+    return (
+        "fd" in tokens
+        or "farsidigit" in normalized
+        or "farsi-digit" in normalized
+        or "persiandigit" in normalized
+        or "persian-digit" in normalized
+    )
+
+
+def is_english_font_candidate(font_path, size=42):
+    name = Path(font_path).stem.lower()
+
+    if any(keyword in name for keyword in ENGLISH_EXCLUDED_FONT_KEYWORDS):
+        return False
+
+    if is_farsi_digit_font_name(font_path):
+        return False
+
+    # فقط فونت‌های انگلیسی معروف/استاندارد پذیرفته شوند.
+    if not any(keyword in name for keyword in ENGLISH_CURATED_FONT_KEYWORDS):
+        return False
+
+    if not font_supports_digits_safely(font_path, style="en", size=size):
+        return False
+
+    try:
+        font = ImageFont.truetype(str(font_path), size=size)
+    except Exception:
+        return False
+
+    different_pairs, comparable_pairs = count_different_digit_pairs(
+        font,
+        "123456789",
+        "۱۲۳۴۵۶۷۸۹",
+    )
+
+    # اگر فونت برای ارقام انگلیسی و فارسی تقریباً یک شکل بدهد،
+    # احتمالاً در خروجی انگلیسی ظاهر فارسی/ترکیبی ایجاد می‌کند.
+    if comparable_pairs >= 5 and different_pairs < 5:
+        return False
+
+    return True
+
+
+def is_persian_font_candidate(font_path, size=42):
+    return font_supports_digits_safely(font_path, style="fa", size=size)
+
+
 def score_font_for_style(font_path, style):
     name = Path(font_path).stem.lower()
     keywords = PREFERRED_FA_KEYWORDS if style == "fa" else PREFERRED_EN_KEYWORDS
@@ -361,31 +510,72 @@ def score_font_for_style(font_path, style):
     return score
 
 
-def filter_fonts_for_style(font_paths, style, size=42):
+def filter_fonts_for_style(
+    font_paths,
+    style,
+    size=42,
+    max_fonts=10,
+):
+    """
+    فونت‌ها را بر اساس اولویت زبان مرتب می‌کند و فقط تا سقف max_fonts
+    فونت معتبر برای همان زبان نگه می‌دارد.
+    """
+    if max_fonts < 1:
+        raise ValueError("max_fonts must be at least 1.")
+
     valid_fonts = []
 
-    print(f"[FONT] filtering style={style}")
+    print(f"[FONT] filtering style={style} | limit={max_fonts}")
 
-    for path in font_paths:
+    ordered_paths = sorted(
+        font_paths,
+        key=lambda p: (
+            -score_font_for_style(p, style),
+            Path(p).name.lower(),
+        ),
+    )
+
+    for path in ordered_paths:
+        if len(valid_fonts) >= max_fonts:
+            break
+
         if is_bad_font_file(path):
             print(f"[FONT] rejected bad/icon font for {style}: {Path(path).name}")
             continue
 
-        if font_supports_digits_safely(path, style=style, size=size):
+        if style == "en":
+            accepted = is_english_font_candidate(path, size=size)
+        else:
+            accepted = is_persian_font_candidate(path, size=size)
+
+        if accepted:
             valid_fonts.append(str(path))
-            print(f"[FONT] accepted for {style}: {Path(path).name}")
+            print(
+                f"[FONT] accepted for {style} "
+                f"({len(valid_fonts)}/{max_fonts}): {Path(path).name}"
+            )
         else:
             print(f"[FONT] rejected for {style}: {Path(path).name}")
 
-    valid_fonts.sort(key=lambda p: score_font_for_style(p, style), reverse=True)
+    print(f"[FONT] selected for {style}: {len(valid_fonts)}")
     return valid_fonts
 
 
-def prepare_font_pools(font_dir="Fonts"):
+def prepare_font_pools(font_dir="Fonts", max_fonts_per_language=10):
     all_font_paths = collect_font_paths(font_dir=font_dir)
 
-    en_fonts = filter_fonts_for_style(all_font_paths, style="en", size=42)
-    fa_fonts = filter_fonts_for_style(all_font_paths, style="fa", size=42)
+    en_fonts = filter_fonts_for_style(
+        all_font_paths,
+        style="en",
+        size=42,
+        max_fonts=max_fonts_per_language,
+    )
+    fa_fonts = filter_fonts_for_style(
+        all_font_paths,
+        style="fa",
+        size=42,
+        max_fonts=max_fonts_per_language,
+    )
 
     return {
         "en": en_fonts,
@@ -399,6 +589,8 @@ def choose_random_font(style="en", font_pools=None, size=42):
 
     pool = font_pools.get(style, [])
 
+    # فارسی: از بین فونت‌های accepted به‌صورت رندوم انتخاب می‌شود.
+    # انگلیسی: از بین فونت‌های معروف/استانداردی که در pool جمع‌آوری شده‌اند.
     if pool:
         chosen_path = random.choice(pool)
         try:
@@ -419,11 +611,19 @@ def choose_random_font(style="en", font_pools=None, size=42):
         ]
     else:
         fallback_candidates = [
-            "Fonts/Arial.ttf",
-            "Fonts/Tahoma.ttf",
             "C:/Windows/Fonts/arial.ttf",
-            "C:/Windows/Fonts/tahoma.ttf",
             "C:/Windows/Fonts/calibri.ttf",
+            "C:/Windows/Fonts/verdana.ttf",
+            "C:/Windows/Fonts/tahoma.ttf",
+            "C:/Windows/Fonts/times.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
+            "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/truetype/liberation2/LiberationSerif-Regular.ttf",
+            "Fonts/Arial.ttf",
+            "Fonts/Calibri.ttf",
+            "Fonts/Verdana.ttf",
+            "Fonts/Tahoma.ttf",
         ]
 
     for path in fallback_candidates:
@@ -736,7 +936,7 @@ def random_crop_and_resize(img, crop_ratio=0.04):
     return img
 
 
-def make_image_variant(img, severity=1.6, always_add_noise=True):
+def make_image_variant(img, severity=1.6, always_add_noise=False):
     """
     Augmentation قوی‌تر برای ساخت دیتاست متنوع‌تر.
     severity حدود پیشنهادی:
@@ -798,37 +998,38 @@ def make_image_variant(img, severity=1.6, always_add_noise=True):
     if random.random() < 0.75:
         img = add_soft_shadow(img, alpha_max=int(35 + 18 * severity))
 
-    # blur
-    if random.random() < 0.45:
+    # blur قوی‌تر: تمرکز روی تاری واقعی به‌جای نویز
+    if random.random() < 0.85:
         img = img.filter(
-            ImageFilter.GaussianBlur(radius=random.uniform(0.35, 1.25) * severity)
+            ImageFilter.GaussianBlur(radius=random.uniform(0.8, 2.4) * severity)
         )
 
-    # motion blur
-    if random.random() < 0.35:
+    # motion blur بیشتر برای نمونه‌های تارتر
+    if random.random() < 0.55:
         img = add_motion_blur(img)
+        if random.random() < 0.40:
+            img = add_motion_blur(img)
 
-    # کاهش کیفیت رزولوشن
-    if random.random() < 0.65:
+    # کاهش کیفیت رزولوشن برای ایجاد blur طبیعی‌تر
+    if random.random() < 0.85:
         img = degrade_resolution(
             img,
-            scale_min=max(0.30, 0.65 - 0.12 * severity),
-            scale_max=0.90,
+            scale_min=max(0.20, 0.55 - 0.15 * severity),
+            scale_max=0.82,
         )
 
-    # نویز حتماً
+    # نویز دیگر اجباری نیست؛ فقط گاهی و خیلی ملایم
     if always_add_noise:
-        img = add_gaussian_noise(img, sigma=random.uniform(8.0, 20.0) * severity)
+        img = add_gaussian_noise(img, sigma=random.uniform(4.0, 8.0) * severity)
     else:
-        if random.random() < 0.85:
-            img = add_gaussian_noise(img, sigma=random.uniform(8.0, 20.0) * severity)
+        if random.random() < 0.15:
+            img = add_gaussian_noise(img, sigma=random.uniform(3.0, 6.0) * severity)
 
-    # salt pepper noise
-    # salt pepper noise - کنترل مستقل، جدا از severity کلی
-        if random.random() < 0.35:
+        # salt pepper noise بسیار کم، فقط برای تنوع محدود
+        if random.random() < 0.05:
             img = add_salt_pepper_noise(
                 img,
-                amount=random.uniform(0.001, 0.004)
+                amount=random.uniform(0.0005, 0.0015)
             )
     # jpeg artifacts
     if random.random() < 0.65:
@@ -876,7 +1077,7 @@ def content_touches_border(img, threshold=140, border=18):
 def make_safe_image_variant(
     original_img,
     severity=1.2,
-    always_add_noise=True,
+    always_add_noise=False,
     max_attempts=12,
     border=18,
     threshold=140,
@@ -936,6 +1137,7 @@ def generate_dataset(
     blanks=None,
     variants_per_image=3,
     font_dir="Fonts",
+    max_fonts_per_language=10,
     seed=None,
     variant_severity=1.2,
     max_variant_attempts=12,
@@ -952,6 +1154,9 @@ def generate_dataset(
     if blanks < 0 or blanks > 80:
         raise ValueError("blanks must be between 0 and 80.")
 
+    if max_fonts_per_language < 1:
+        raise ValueError("max_fonts_per_language must be at least 1.")
+
     if seed is None:
         seed = random.SystemRandom().randint(0, 2**32 - 1)
 
@@ -959,32 +1164,52 @@ def generate_dataset(
     np.random.seed(seed)
 
     print("Preparing font pools...")
-    font_pools = prepare_font_pools(font_dir=font_dir)
+    font_pools = prepare_font_pools(
+        font_dir=font_dir,
+        max_fonts_per_language=max_fonts_per_language,
+    )
 
-    print(f"English fonts found: {len(font_pools['en'])}")
-    print(f"Persian fonts found: {len(font_pools['fa'])}")
+    print(f"English fonts selected: {len(font_pools['en'])}")
+    print(f"Persian fonts selected: {len(font_pools['fa'])}")
 
     if len(font_pools["fa"]) == 0:
         print("WARNING: No safe Persian font found in Fonts folder.")
+
+    if len(font_pools["en"]) == 0:
+        print("WARNING: No safe English font found in Fonts folder.")
 
     run_name = datetime.now().strftime(
         f"sudoku_{difficulty}_%Y%m%d_%H%M%S_%f_seed_{seed}"
     )
 
     out_dir = Path(out_root) / run_name
-    images_original_dir = out_dir / "images_original"
-    images_variant_dir = out_dir / "images_variant"
-
-    out_dir.mkdir(parents=True, exist_ok=False)
-    images_original_dir.mkdir(parents=True, exist_ok=True)
-    images_variant_dir.mkdir(parents=True, exist_ok=True)
-
-    labels_path = out_dir / "labels.csv"
     metadata_path = out_dir / "metadata.json"
 
-    total_written = 0
+    out_dir.mkdir(parents=True, exist_ok=False)
 
-    labels_file, writer = init_labels_csv(labels_path)
+    styles = ("en", "fa")
+    style_outputs = {}
+    label_resources = {}
+    total_written_by_style = {style: 0 for style in styles}
+
+    for style in styles:
+        style_dir = out_dir / style
+        images_original_dir = style_dir / "images_original"
+        images_variant_dir = style_dir / "images_variant"
+        labels_path = style_dir / "labels.csv"
+
+        images_original_dir.mkdir(parents=True, exist_ok=True)
+        images_variant_dir.mkdir(parents=True, exist_ok=True)
+
+        labels_file, writer = init_labels_csv(labels_path)
+        label_resources[style] = (labels_file, writer)
+
+        style_outputs[style] = {
+            "directory": style_dir,
+            "images_original": images_original_dir,
+            "images_variant": images_variant_dir,
+            "labels": labels_path,
+        }
 
     try:
         for idx in range(count):
@@ -998,10 +1223,12 @@ def generate_dataset(
             puzzle_flat = flatten_board(puzzle)
             solution_flat = flatten_board(solution)
 
-            for style in ["en"]:
+            for style in styles:
+                style_info = style_outputs[style]
+                labels_file, writer = label_resources[style]
                 base_name = f"sudoku_{idx:05d}_{style}"
 
-                original_path = images_original_dir / f"{base_name}.png"
+                original_path = style_info["images_original"] / f"{base_name}.png"
                 original_img = render_sudoku(
                     puzzle,
                     original_path,
@@ -1010,7 +1237,7 @@ def generate_dataset(
                 )
 
                 row = {
-                    "filename": str(original_path.relative_to(out_dir)),
+                    "filename": str(original_path.relative_to(style_info["directory"])),
                     "style": style,
                     "kind": "original",
                     "puzzle": puzzle_flat,
@@ -1021,23 +1248,26 @@ def generate_dataset(
                     "seed": seed,
                 }
                 append_label(writer, labels_file, row)
-                total_written += 1
+                total_written_by_style[style] += 1
 
                 for var_idx in range(variants_per_image):
                     variant_img = make_safe_image_variant(
                         original_img,
                         severity=variant_severity,
-                        always_add_noise=True,
+                        always_add_noise=False,
                         max_attempts=max_variant_attempts,
                         border=border_check,
                         threshold=140,
                     )
 
-                    variant_path = images_variant_dir / f"{base_name}_var_{var_idx:02d}.png"
+                    variant_path = (
+                        style_info["images_variant"]
+                        / f"{base_name}_var_{var_idx:02d}.png"
+                    )
                     variant_img.save(variant_path, optimize=True)
 
                     row = {
-                        "filename": str(variant_path.relative_to(out_dir)),
+                        "filename": str(variant_path.relative_to(style_info["directory"])),
                         "style": style,
                         "kind": "variant",
                         "puzzle": puzzle_flat,
@@ -1048,31 +1278,54 @@ def generate_dataset(
                         "seed": seed,
                     }
                     append_label(writer, labels_file, row)
-                    total_written += 1
+                    total_written_by_style[style] += 1
 
             print(
                 f"Generated puzzle {idx + 1}/{count} | "
-                f"labels written so far: {total_written}"
+                f"en={total_written_by_style['en']} | "
+                f"fa={total_written_by_style['fa']}"
             )
 
     finally:
-        labels_file.close()
+        for labels_file, _writer in label_resources.values():
+            labels_file.close()
 
         metadata = {
             "seed": seed,
             "difficulty": difficulty,
             "requested_blanks": blanks,
-            "count": count,
+            "count_per_language": count,
+            "languages": list(styles),
             "variants_per_image": variants_per_image,
             "variant_severity": variant_severity,
             "max_variant_attempts": max_variant_attempts,
             "border_check": border_check,
+            "english_font_filter": "latin_family_allowlist_plus_farsi_exclusions",
+            "variant_blur_mode": "blur_heavy_noise_light",
             "font_dir": font_dir,
+            "max_fonts_per_language": max_fonts_per_language,
+            "selected_fonts": {
+                style: [Path(font_path).name for font_path in font_pools[style]]
+                for style in styles
+            },
+            "english_font_strategy": "curated_famous_english_fonts_only",
+            "persian_font_strategy": "random_from_accepted_fonts",
             "output_directory": str(out_dir),
-            "original_images_directory": str(images_original_dir),
-            "variant_images_directory": str(images_variant_dir),
-            "labels_file": str(labels_path),
-            "total_labeled_images_written": total_written,
+            "language_outputs": {
+                style: {
+                    "directory": str(style_outputs[style]["directory"]),
+                    "original_images_directory": str(
+                        style_outputs[style]["images_original"]
+                    ),
+                    "variant_images_directory": str(
+                        style_outputs[style]["images_variant"]
+                    ),
+                    "labels_file": str(style_outputs[style]["labels"]),
+                    "total_labeled_images_written": total_written_by_style[style],
+                }
+                for style in styles
+            },
+            "total_labeled_images_written": sum(total_written_by_style.values()),
         }
 
         with open(metadata_path, "w", encoding="utf-8") as f:
@@ -1081,16 +1334,33 @@ def generate_dataset(
     print()
     print("Done.")
     print(f"Output directory: {out_dir}")
-    print(f"Original images directory: {images_original_dir}")
-    print(f"Variant images directory: {images_variant_dir}")
-    print(f"Labels file: {labels_path}")
+    for style in styles:
+        print(f"[{style}] directory: {style_outputs[style]['directory']}")
+        print(
+            f"[{style}] original images: "
+            f"{style_outputs[style]['images_original']}"
+        )
+        print(
+            f"[{style}] variant images: "
+            f"{style_outputs[style]['images_variant']}"
+        )
+        print(f"[{style}] labels: {style_outputs[style]['labels']}")
+        print(
+            f"[{style}] total labeled images: "
+            f"{total_written_by_style[style]}"
+        )
     print(f"Metadata file: {metadata_path}")
     print(f"Seed: {seed}")
     print(f"Difficulty: {difficulty}")
     print(f"Requested blanks: {blanks}")
+    print(f"Max fonts per language: {max_fonts_per_language}")
     print(f"Variant severity: {variant_severity}")
     print(f"Border check: {border_check}")
-    print(f"Total labeled images written: {total_written}")
+    print(
+        "Total labeled images written: "
+        f"{sum(total_written_by_style.values())}"
+    )
+
 
 
 # ---------------------------
@@ -1153,6 +1423,13 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--max-fonts-per-language",
+        type=int,
+        default=10,
+        help="Maximum number of valid fonts used for each language. Default: 10",
+    )
+
+    parser.add_argument(
         "--variant-severity",
         type=float,
         default=1.2,
@@ -1186,6 +1463,7 @@ if __name__ == "__main__":
         blanks=args.blanks,
         variants_per_image=args.variants_per_image,
         font_dir=args.font_dir,
+        max_fonts_per_language=args.max_fonts_per_language,
         seed=args.seed,
         variant_severity=args.variant_severity,
         max_variant_attempts=args.max_variant_attempts,

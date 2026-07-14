@@ -122,10 +122,6 @@ def print_board(board: list[list[int]], title: str = "Board") -> None:
 
 
 def debug_print_boards(results, num_samples: int = 5, seed: int | None = None) -> None:
-    """
-    برای چند نمونه‌ی رندوم، پازل اصلی تشخیص‌داده‌شده و حل‌شده رو در کنسول چاپ می‌کنه.
-    """
-
     if seed is not None:
         random.seed(seed)
 
@@ -158,10 +154,6 @@ def debug_show_confidence_heatmap(
     seed: int | None = None,
     title: str = "Digit confidence heatmaps",
 ) -> None:
-    """
-    برای چند نمونه، heatmap میزان اطمینان مدل روی هر خانه رو نشون می‌ده.
-    """
-
     if seed is not None:
         random.seed(seed)
 
@@ -204,7 +196,7 @@ def debug_show_confidence_heatmap(
 
 
 def main():
-    sudokus_folder = "storage/sudoku/raw/v1_test"
+    sudokus_folder = "storage/sudoku/raw/v2_test/v2_test"
     debug_output_dir = "storage/sudoku/debug_solver"
 
     results = load_and_solve(

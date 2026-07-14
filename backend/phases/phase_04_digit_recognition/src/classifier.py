@@ -19,8 +19,14 @@ class DigitPrediction:
 
 class PyTorchDigitClassifier:
 
-    def __init__(self, model_path: Path | None = None, confidence_threshold: float | None = None) -> None:
-        self.model_path = model_path or self._resolve_model_path()
+    def __init__(self, model_path: Path | None = None, confidence_threshold: float | None = None, language: str = "en") -> None:
+        self.language = language.strip().lower()
+
+        if self.language not in ("en", "fa"):
+            raise ValueError(f"Unsupported language: {self.language}. Choose 'en' or 'fa'.")
+
+        self.model_path = model_path or self._resolve_model_path(self.language)
+        print(f"[CLASSIFIER] language={self.language} | model_path={self.model_path}")
         self.confidence_threshold = float(
             confidence_threshold if confidence_threshold is not None else settings.get("digit_recognition.confidence_threshold", 0.75)
         )
@@ -33,7 +39,11 @@ class PyTorchDigitClassifier:
         self.status_message = "Model not loaded yet."
 
     @staticmethod
-    def _resolve_model_path() -> Path:
+    def _resolve_model_path(language: str) -> Path:
+        configured_path = settings.get(f"digit_recognition.model_paths.{language}", None)
+
+        if configured_path:
+            return settings.resolve_path(str(configured_path))
 
         try:
             from phases.phase_04_digit_recognition.src.utils import latest_checkpoint_path
