@@ -33,14 +33,14 @@ def run_prediction_pipeline(image_path: Path, language: str = "en") -> dict[str,
     save_image(out_dir / "00_uploaded.png", image_bgr)
 
     phase1 = preprocess_image(image_bgr, out_dir)
-    phase2 = find_sudoku_grid(phase1["original"], phase1["threshold"], out_dir)  # type: ignore[arg-type]
-    phase3 = extract_cells(phase2["warped"], phase2["warped_binary"] ,out_dir)  # type: ignore[arg-type]
+    phase2 = find_sudoku_grid(phase1["original"], phase1["threshold"], out_dir)  
+    phase3 = extract_cells(phase2["warped"], phase2["warped_binary"] ,out_dir) 
 
     print(f"[PIPELINE] selected language: {language}")
     classifier = classifier = PyTorchDigitClassifier(language=language)
     board, confidence, low_confidence_cells = classifier.predict_board(
-        phase3["clean_cells"],  # type: ignore[arg-type]
-        phase3["empty_flags"],  # type: ignore[arg-type]
+        phase3["clean_cells"], 
+        phase3["empty_flags"],  
     )
 
     metadata = {
@@ -63,7 +63,7 @@ def run_prediction_pipeline(image_path: Path, language: str = "en") -> dict[str,
     ]
 
     if bool(settings.get("ui.show_cells_separately", True)):
-        for idx, filename in enumerate(phase3.get("cell_filenames", [])):  # type: ignore[union-attr]
+        for idx, filename in enumerate(phase3.get("cell_filenames", [])):  
             row, col = divmod(idx, 9)
             phases.append(
                 phase_item(

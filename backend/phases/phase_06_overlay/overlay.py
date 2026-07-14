@@ -19,7 +19,7 @@ def draw_solution_on_warped(warped_bgr: np.ndarray, original_board: Board, solve
             if original_board[r][c] == 0 and solved_board[r][c] != 0:
                 text = str(solved_board[r][c])
                 font = cv2.FONT_HERSHEY_SIMPLEX
-                scale = 1.15
+                scale = 0.65
                 thickness = 2
                 size, _ = cv2.getTextSize(text, font, scale, thickness)
                 x = c * cell_w + (cell_w - size[0]) // 2
@@ -39,7 +39,7 @@ def draw_solution_overlay_only(board_size: int, original_board: Board, solved_bo
             if original_board[r][c] == 0 and solved_board[r][c] != 0:
                 text = str(solved_board[r][c])
                 font = cv2.FONT_HERSHEY_SIMPLEX
-                scale = 1.15
+                scale = 0.75
                 thickness = 2
                 size, _ = cv2.getTextSize(text, font, scale, thickness)
                 x = c * cell + (cell - size[0]) // 2

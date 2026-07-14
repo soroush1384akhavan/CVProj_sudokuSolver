@@ -88,6 +88,10 @@ digit_recognition:
     include_zero_digit: false
     num_workers: 0
 
+    generated_fa:
+      enabled: true
+      root_dir: "generated_digits/persian_digits"
+
     hoda:
       raw_dir: "phases/phase_04_digit_recognition/src/datasets/hoda"
       train_cdb: "DigitDB/Train 60000.cdb"
@@ -102,7 +106,7 @@ digit_recognition:
       test_split: 0.1
 
     sudoku_cells:
-      include_empty_cells: false
+      include_empty_cells: true
       validation_split: 0.1
       cache_dir: "storage/sudoku/cell_cache"
       generated_roots:

@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 from typing import Any
+from torchvision.datasets import ImageFolder
 
 import albumentations as A
 import cv2
@@ -71,7 +72,6 @@ class RandomSudokuGridLines(A.ImageOnlyTransform):
             self.max_vertical_lines,
         )
 
-        # تضمین می‌کند وقتی transform اجرا شد حداقل یک خط داشته باشیم.
         if horizontal_count == 0 and vertical_count == 0:
             if self.py_random.random() < 0.5:
                 horizontal_count = 1
@@ -260,7 +260,7 @@ class DigitTransform:
                 edge_ratio=0.0,
                 middle_line_probability=0.50,
                 line_value_range=(140, 240),
-                p=0.4,
+                p=0.6,
             ),
         ]
 
@@ -375,15 +375,21 @@ def build_digit_dataloaders(languages: list[str] | str | None = None):
 
     dataset_sizes: dict[str, int] = {}
 
-    # --- فارسی: Hoda ---
+       # --- فارسی: Hoda + Generated Persian digits ---
     if "fa" in active_languages:
         hoda_cfg = data_cfg.get("hoda", {})
         hoda_root = backend_root / hoda_cfg.get(
             "raw_dir",
             "phases/phase_04_digit_recognition/src/datasets/hoda",
         )
-        hoda_train_cdb = hoda_root / hoda_cfg.get("train_cdb", "DigitDB/Train 60000.cdb")
-        hoda_test_cdb = hoda_root / hoda_cfg.get("test_cdb", "DigitDB/Test 20000.cdb")
+        hoda_train_cdb = hoda_root / hoda_cfg.get(
+            "train_cdb",
+            "DigitDB/Train 60000.cdb",
+        )
+        hoda_test_cdb = hoda_root / hoda_cfg.get(
+            "test_cdb",
+            "DigitDB/Test 20000.cdb",
+        )
 
         hoda_train_aug = HodaCDBDataset(
             cdb_path=hoda_train_cdb,
@@ -391,12 +397,14 @@ def build_digit_dataloaders(languages: list[str] | str | None = None):
             include_zero_digit=include_zero_digit,
             transform=train_transform,
         )
+
         hoda_train_eval = HodaCDBDataset(
             cdb_path=hoda_train_cdb,
             image_size=image_size,
             include_zero_digit=include_zero_digit,
             transform=eval_transform,
         )
+
         hoda_test = HodaCDBDataset(
             cdb_path=hoda_test_cdb,
             image_size=image_size,
@@ -407,8 +415,58 @@ def build_digit_dataloaders(languages: list[str] | str | None = None):
         train_aug_sources.append(hoda_train_aug)
         train_eval_sources.append(hoda_train_eval)
         test_sources.append(hoda_test)
+
         dataset_sizes["Hoda train"] = len(hoda_train_aug)
         dataset_sizes["Hoda test"] = len(hoda_test)
+
+        generated_fa_cfg = data_cfg.get("generated_fa", {})
+
+        if bool(generated_fa_cfg.get("enabled", False)):
+            generated_fa_root = backend_root / generated_fa_cfg.get(
+                "root_dir",
+                "generated_digits",
+            )
+
+            if not generated_fa_root.is_dir():
+                raise FileNotFoundError(
+                    f"Generated Persian dataset not found: {generated_fa_root}"
+                )
+
+            generated_fa_aug = ImageFolder(
+                root=str(generated_fa_root),
+                transform=train_transform,
+            )
+
+            generated_fa_eval = ImageFolder(
+                root=str(generated_fa_root),
+                transform=eval_transform,
+            )
+
+            if not include_zero_digit:
+                zero_label = generated_fa_aug.class_to_idx.get("0")
+
+                generated_indices = [
+                    index
+                    for index, (_, label) in enumerate(generated_fa_aug.samples)
+                    if label != zero_label
+                ]
+
+                generated_fa_aug = Subset(
+                    generated_fa_aug,
+                    generated_indices,
+                )
+
+                generated_fa_eval = Subset(
+                    generated_fa_eval,
+                    generated_indices,
+                )
+
+            train_aug_sources.append(generated_fa_aug)
+            train_eval_sources.append(generated_fa_eval)
+
+            dataset_sizes["Generated FA train"] = len(
+                generated_fa_aug
+            )
 
     # --- انگلیسی: MNIST + Chars74K ---
     if "en" in active_languages:
@@ -549,10 +607,7 @@ def build_digit_dataloaders(languages: list[str] | str | None = None):
 
 
 def build_eval_only_datasets(languages: list[str] | str | None = None) -> dict:
-    """
-    برای هر ساب‌دیتاست فعال (بر اساس languages) یک نسخه‌ی eval-only (بدون augmentation)
-    از test set جداگانه برمی‌گردونه، تا بشه دقت مدل رو روی هرکدوم جداگانه سنجید.
-    """
+
     backend_root = BACKEND_ROOT
 
     phase_cfg = get_phase4_config()

@@ -1,0 +1,91 @@
+{
+  "model": {
+    "name": "DigitCNN",
+    "input_channels": 1,
+    "num_classes": 10,
+    "image_size": 28,
+    "dropout": 0.25
+  },
+  "training": {
+    "seed": 42,
+    "batch_size": 64,
+    "epochs": 20,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "early_stopping_patience": 6,
+    "lr_scheduler_patience": 3,
+    "lr_scheduler_factor": 0.5,
+    "checkpoint_name": "digit_cnn.pth"
+  },
+  "sudoku_fine_tune": {
+    "epochs": 20,
+    "learning_rate": 0.0003,
+    "weight_decay": 0.0001,
+    "early_stopping_patience": 10,
+    "lr_scheduler_patience": 2,
+    "lr_scheduler_factor": 0.5,
+    "replay_enabled": true,
+    "freeze_batchnorm": true
+  },
+  "data": {
+    "validation_split": 0.1,
+    "include_zero_digit": false,
+    "num_workers": 0,
+    "hoda": {
+      "raw_dir": "phases/phase_04_digit_recognition/src/datasets/hoda",
+      "train_cdb": "DigitDB/Train 60000.cdb",
+      "test_cdb": "DigitDB/Test 20000.cdb"
+    },
+    "mnist": {
+      "root_dir": "phases/phase_04_digit_recognition/src/datasets/mnist",
+      "download": false
+    },
+    "chars74k": {
+      "root_dir": "phases/phase_04_digit_recognition/src/datasets/chars74k/EnglishFnt/Fnt",
+      "test_split": 0.1
+    },
+    "sudoku_cells": {
+      "include_empty_cells": false,
+      "validation_split": 0.1,
+      "cache_dir": "storage/sudoku/cell_cache",
+      "generated_roots": [
+        "sudoku_runs/sudoku_medium_20260714_151427_563299_seed_1701254515"
+      ],
+      "dat_roots": [
+        "storage/sudoku/raw/v1_training/v1_training",
+        "storage/sudoku/raw/v2_train/v2_train"
+      ]
+    },
+    "languages": [
+      "en"
+    ]
+  },
+  "augmentation": {
+    "enabled": true,
+    "pad_extra": 8,
+    "affine_p": 0.35,
+    "translate_percent": 0.03,
+    "scale_min": 0.97,
+    "scale_max": 1.03,
+    "rotate_limit": 5,
+    "shear_limit": 2,
+    "brightness_limit": 0.08,
+    "contrast_limit": 0.08,
+    "brightness_contrast_p": 0.25,
+    "blur_p": 0.04,
+    "empty_threshold": 12
+  },
+  "source_checkpoint_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_16-56-49\\digit_cnn.pth",
+  "source_summary": {
+    "generated:sudoku_medium_20260714_151427_563299_seed_1701254515": 6783,
+    "dat:v1_training": 3356,
+    "dat:v2_train": 4408,
+    "replay:original_datasets": 1962,
+    "split:sudoku_train": 13080,
+    "split:sudoku_validation": 1467,
+    "split:total_train_with_replay": 15042
+  },
+  "freeze_batchnorm": true,
+  "seed": 42,
+  "device": "cuda"
+}

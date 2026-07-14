@@ -25,7 +25,7 @@ def parse_args():
         "--language",
         type=str,
         choices=["en", "fa"],
-        default="en",
+        default="fa",
         help="Language to evaluate: en or fa. Default: en",
     )
 
@@ -196,7 +196,12 @@ def show_confusion_matrix(
 
 def main():
     args = parse_args()
-    language = args.language
+    language = (
+        args.language
+        or settings.get("digit_recognition.default_language", "en")
+        )   
+
+    language = str(language).strip().lower()
 
     phase_cfg = get_phase4_config()
     model_cfg = phase_cfg.get("model", {})
@@ -235,19 +240,17 @@ def main():
         None,
     )
 
-    if configured_model_path:
-        checkpoint_path = settings.resolve_path(
-            str(configured_model_path)
-        )
-        run_dir = checkpoint_path.parent
-    else:
-        print(
-            f"No configured model path found for language={language}. "
-            "Using latest checkpoint."
+    if not configured_model_path:
+        raise KeyError(
+            f"No model path configured for language={language}. "
+            f"Expected: digit_recognition.model_paths.{language}"
         )
 
-        run_dir = latest_run_dir()
-        checkpoint_path = latest_checkpoint_path()
+    checkpoint_path = settings.resolve_path(
+        str(configured_model_path)
+    )
+
+    run_dir = checkpoint_path.parent
 
     if not checkpoint_path.is_file():
         raise FileNotFoundError(

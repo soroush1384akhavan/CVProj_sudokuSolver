@@ -1,0 +1,60 @@
+{
+  "language": "en",
+  "checkpoint": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\models\\digit_recognition\\en\\digit_cnn.pth",
+  "image_size": 28,
+  "batch_size": 1,
+  "warmup": 30,
+  "runs": 300,
+  "cpu_threads": 1,
+  "opset": 17,
+  "results": [
+    {
+      "format": "PyTorch",
+      "model_file": "digit_cnn.pth",
+      "size_mb": 1.7977886199951172,
+      "avg_latency_ms": 1.5461166666666666,
+      "median_latency_ms": 1.48695,
+      "p95_latency_ms": 1.9240050000000002,
+      "min_latency_ms": 1.2452,
+      "max_latency_ms": 2.3665,
+      "std_latency_ms": 0.19266473865817332,
+      "throughput_samples_s": 646.7817219485378,
+      "max_output_diff": 0.0,
+      "speedup_vs_pytorch": 1.0,
+      "latency_reduction_pct": 0.0,
+      "size_reduction_pct": 0.0
+    },
+    {
+      "format": "TorchScript",
+      "model_file": "digit_cnn_torchscript.pt",
+      "size_mb": 1.791031837463379,
+      "avg_latency_ms": 1.3213796666666666,
+      "median_latency_ms": 1.3011,
+      "p95_latency_ms": 1.569895,
+      "min_latency_ms": 1.1379,
+      "max_latency_ms": 1.7879,
+      "std_latency_ms": 0.13043558494478757,
+      "throughput_samples_s": 756.7847646109282,
+      "max_output_diff": 1.6689300537109375e-06,
+      "speedup_vs_pytorch": 1.1700775376443662,
+      "latency_reduction_pct": 14.535578384554851,
+      "size_reduction_pct": 0.3758385416721924
+    },
+    {
+      "format": "ONNX",
+      "model_file": "digit_cnn.onnx",
+      "size_mb": 1.7873411178588867,
+      "avg_latency_ms": 2.7413293333333333,
+      "median_latency_ms": 2.7233,
+      "p95_latency_ms": 2.979695,
+      "min_latency_ms": 2.535,
+      "max_latency_ms": 3.4573,
+      "std_latency_ms": 0.13362905799097574,
+      "throughput_samples_s": 364.786524493956,
+      "max_output_diff": 1.9073486328125e-06,
+      "speedup_vs_pytorch": 0.5640025252955135,
+      "latency_reduction_pct": -77.30417066413705,
+      "size_reduction_pct": 0.5811307302778924
+    }
+  ]
+}

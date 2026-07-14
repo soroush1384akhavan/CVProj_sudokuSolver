@@ -1,0 +1,942 @@
+{
+  "count": 39,
+  "max_samples": 100,
+  "samples": [
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00015_fa_var_02\\cells\\cell_08.png",
+      "board_name": "sudoku_00015_fa_var_02",
+      "cell_name": "cell_08",
+      "validation_index": 104,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\000_board-sudoku_00015_fa_var_02_cell_08_true-3_pred-8_confidence-0.8112.png",
+      "true_label": 3,
+      "predicted_label": 8,
+      "confidence": 0.8112061619758606,
+      "top3": [
+        {
+          "digit": 8,
+          "probability": 0.8112061619758606
+        },
+        {
+          "digit": 3,
+          "probability": 0.100239098072052
+        },
+        {
+          "digit": 2,
+          "probability": 0.043061256408691406
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00015_fa_var_02\\cells\\cell_12.png",
+      "board_name": "sudoku_00015_fa_var_02",
+      "cell_name": "cell_12",
+      "validation_index": 106,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\001_board-sudoku_00015_fa_var_02_cell_12_true-4_pred-3_confidence-0.6170.png",
+      "true_label": 4,
+      "predicted_label": 3,
+      "confidence": 0.6170385479927063,
+      "top3": [
+        {
+          "digit": 3,
+          "probability": 0.6170385479927063
+        },
+        {
+          "digit": 2,
+          "probability": 0.27900251746177673
+        },
+        {
+          "digit": 4,
+          "probability": 0.10394855588674545
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00015_fa_var_02\\cells\\cell_69.png",
+      "board_name": "sudoku_00015_fa_var_02",
+      "cell_name": "cell_69",
+      "validation_index": 131,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\002_board-sudoku_00015_fa_var_02_cell_69_true-6_pred-4_confidence-0.9143.png",
+      "true_label": 6,
+      "predicted_label": 4,
+      "confidence": 0.9142984747886658,
+      "top3": [
+        {
+          "digit": 4,
+          "probability": 0.9142984747886658
+        },
+        {
+          "digit": 6,
+          "probability": 0.08473141491413116
+        },
+        {
+          "digit": 5,
+          "probability": 0.0009635393507778645
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00023_fa_var_00\\cells\\cell_45.png",
+      "board_name": "sudoku_00023_fa_var_00",
+      "cell_name": "cell_45",
+      "validation_index": 154,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\003_board-sudoku_00023_fa_var_00_cell_45_true-6_pred-4_confidence-0.4334.png",
+      "true_label": 6,
+      "predicted_label": 4,
+      "confidence": 0.43338412046432495,
+      "top3": [
+        {
+          "digit": 4,
+          "probability": 0.43338412046432495
+        },
+        {
+          "digit": 6,
+          "probability": 0.4129057824611664
+        },
+        {
+          "digit": 1,
+          "probability": 0.06672126799821854
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00023_fa_var_00\\cells\\cell_58.png",
+      "board_name": "sudoku_00023_fa_var_00",
+      "cell_name": "cell_58",
+      "validation_index": 160,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\004_board-sudoku_00023_fa_var_00_cell_58_true-6_pred-4_confidence-0.9358.png",
+      "true_label": 6,
+      "predicted_label": 4,
+      "confidence": 0.9357502460479736,
+      "top3": [
+        {
+          "digit": 4,
+          "probability": 0.9357502460479736
+        },
+        {
+          "digit": 6,
+          "probability": 0.043781716376543045
+        },
+        {
+          "digit": 5,
+          "probability": 0.02024357207119465
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00023_fa_var_00\\cells\\cell_65.png",
+      "board_name": "sudoku_00023_fa_var_00",
+      "cell_name": "cell_65",
+      "validation_index": 164,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\005_board-sudoku_00023_fa_var_00_cell_65_true-6_pred-4_confidence-0.8368.png",
+      "true_label": 6,
+      "predicted_label": 4,
+      "confidence": 0.8367882966995239,
+      "top3": [
+        {
+          "digit": 4,
+          "probability": 0.8367882966995239
+        },
+        {
+          "digit": 6,
+          "probability": 0.11921432614326477
+        },
+        {
+          "digit": 5,
+          "probability": 0.04377233237028122
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00027_fa_var_00\\cells\\cell_04.png",
+      "board_name": "sudoku_00027_fa_var_00",
+      "cell_name": "cell_04",
+      "validation_index": 173,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\006_board-sudoku_00027_fa_var_00_cell_04_true-6_pred-3_confidence-0.4954.png",
+      "true_label": 6,
+      "predicted_label": 3,
+      "confidence": 0.49540257453918457,
+      "top3": [
+        {
+          "digit": 3,
+          "probability": 0.49540257453918457
+        },
+        {
+          "digit": 2,
+          "probability": 0.2513643801212311
+        },
+        {
+          "digit": 4,
+          "probability": 0.21888792514801025
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00027_fa_var_00\\cells\\cell_14.png",
+      "board_name": "sudoku_00027_fa_var_00",
+      "cell_name": "cell_14",
+      "validation_index": 179,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\007_board-sudoku_00027_fa_var_00_cell_14_true-4_pred-3_confidence-0.7112.png",
+      "true_label": 4,
+      "predicted_label": 3,
+      "confidence": 0.7111684679985046,
+      "top3": [
+        {
+          "digit": 3,
+          "probability": 0.7111684679985046
+        },
+        {
+          "digit": 4,
+          "probability": 0.15121987462043762
+        },
+        {
+          "digit": 7,
+          "probability": 0.07727906107902527
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00027_fa_var_00\\cells\\cell_15.png",
+      "board_name": "sudoku_00027_fa_var_00",
+      "cell_name": "cell_15",
+      "validation_index": 180,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\008_board-sudoku_00027_fa_var_00_cell_15_true-6_pred-4_confidence-0.9538.png",
+      "true_label": 6,
+      "predicted_label": 4,
+      "confidence": 0.9537681937217712,
+      "top3": [
+        {
+          "digit": 4,
+          "probability": 0.9537681937217712
+        },
+        {
+          "digit": 6,
+          "probability": 0.038275096565485
+        },
+        {
+          "digit": 3,
+          "probability": 0.0048209261149168015
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00027_fa_var_00\\cells\\cell_21.png",
+      "board_name": "sudoku_00027_fa_var_00",
+      "cell_name": "cell_21",
+      "validation_index": 183,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\009_board-sudoku_00027_fa_var_00_cell_21_true-2_pred-7_confidence-0.7372.png",
+      "true_label": 2,
+      "predicted_label": 7,
+      "confidence": 0.7371606826782227,
+      "top3": [
+        {
+          "digit": 7,
+          "probability": 0.7371606826782227
+        },
+        {
+          "digit": 4,
+          "probability": 0.13269658386707306
+        },
+        {
+          "digit": 2,
+          "probability": 0.12133832275867462
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00027_fa_var_00\\cells\\cell_26.png",
+      "board_name": "sudoku_00027_fa_var_00",
+      "cell_name": "cell_26",
+      "validation_index": 185,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\010_board-sudoku_00027_fa_var_00_cell_26_true-1_pred-9_confidence-0.7968.png",
+      "true_label": 1,
+      "predicted_label": 9,
+      "confidence": 0.7967574000358582,
+      "top3": [
+        {
+          "digit": 9,
+          "probability": 0.7967574000358582
+        },
+        {
+          "digit": 1,
+          "probability": 0.20263132452964783
+        },
+        {
+          "digit": 2,
+          "probability": 0.0003795907541643828
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00027_fa_var_00\\cells\\cell_43.png",
+      "board_name": "sudoku_00027_fa_var_00",
+      "cell_name": "cell_43",
+      "validation_index": 191,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\011_board-sudoku_00027_fa_var_00_cell_43_true-2_pred-7_confidence-0.8240.png",
+      "true_label": 2,
+      "predicted_label": 7,
+      "confidence": 0.8239596486091614,
+      "top3": [
+        {
+          "digit": 7,
+          "probability": 0.8239596486091614
+        },
+        {
+          "digit": 2,
+          "probability": 0.10117713361978531
+        },
+        {
+          "digit": 9,
+          "probability": 0.048062101006507874
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00027_fa_var_00\\cells\\cell_44.png",
+      "board_name": "sudoku_00027_fa_var_00",
+      "cell_name": "cell_44",
+      "validation_index": 192,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\012_board-sudoku_00027_fa_var_00_cell_44_true-6_pred-4_confidence-0.5319.png",
+      "true_label": 6,
+      "predicted_label": 4,
+      "confidence": 0.5318557620048523,
+      "top3": [
+        {
+          "digit": 4,
+          "probability": 0.5318557620048523
+        },
+        {
+          "digit": 9,
+          "probability": 0.13973835110664368
+        },
+        {
+          "digit": 1,
+          "probability": 0.13007542490959167
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00027_fa_var_00\\cells\\cell_67.png",
+      "board_name": "sudoku_00027_fa_var_00",
+      "cell_name": "cell_67",
+      "validation_index": 202,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\013_board-sudoku_00027_fa_var_00_cell_67_true-2_pred-7_confidence-0.5108.png",
+      "true_label": 2,
+      "predicted_label": 7,
+      "confidence": 0.5108146071434021,
+      "top3": [
+        {
+          "digit": 7,
+          "probability": 0.5108146071434021
+        },
+        {
+          "digit": 2,
+          "probability": 0.3601798117160797
+        },
+        {
+          "digit": 4,
+          "probability": 0.12298082560300827
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00027_fa_var_00\\cells\\cell_73.png",
+      "board_name": "sudoku_00027_fa_var_00",
+      "cell_name": "cell_73",
+      "validation_index": 203,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\014_board-sudoku_00027_fa_var_00_cell_73_true-2_pred-4_confidence-0.5167.png",
+      "true_label": 2,
+      "predicted_label": 4,
+      "confidence": 0.5167461633682251,
+      "top3": [
+        {
+          "digit": 4,
+          "probability": 0.5167461633682251
+        },
+        {
+          "digit": 2,
+          "probability": 0.43444913625717163
+        },
+        {
+          "digit": 7,
+          "probability": 0.047907065600156784
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00035_fa_var_00\\cells\\cell_08.png",
+      "board_name": "sudoku_00035_fa_var_00",
+      "cell_name": "cell_08",
+      "validation_index": 206,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\015_board-sudoku_00035_fa_var_00_cell_08_true-4_pred-6_confidence-0.2684.png",
+      "true_label": 4,
+      "predicted_label": 6,
+      "confidence": 0.2684324383735657,
+      "top3": [
+        {
+          "digit": 6,
+          "probability": 0.2684324383735657
+        },
+        {
+          "digit": 8,
+          "probability": 0.24965856969356537
+        },
+        {
+          "digit": 4,
+          "probability": 0.19350379705429077
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00035_fa_var_00\\cells\\cell_09.png",
+      "board_name": "sudoku_00035_fa_var_00",
+      "cell_name": "cell_09",
+      "validation_index": 207,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\016_board-sudoku_00035_fa_var_00_cell_09_true-2_pred-3_confidence-0.9291.png",
+      "true_label": 2,
+      "predicted_label": 3,
+      "confidence": 0.9291107058525085,
+      "top3": [
+        {
+          "digit": 3,
+          "probability": 0.9291107058525085
+        },
+        {
+          "digit": 2,
+          "probability": 0.06281550973653793
+        },
+        {
+          "digit": 4,
+          "probability": 0.00807272270321846
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00038_fa_var_01\\cells\\cell_03.png",
+      "board_name": "sudoku_00038_fa_var_01",
+      "cell_name": "cell_03",
+      "validation_index": 310,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\017_board-sudoku_00038_fa_var_01_cell_03_true-6_pred-4_confidence-0.5124.png",
+      "true_label": 6,
+      "predicted_label": 4,
+      "confidence": 0.5124037265777588,
+      "top3": [
+        {
+          "digit": 4,
+          "probability": 0.5124037265777588
+        },
+        {
+          "digit": 6,
+          "probability": 0.43610820174217224
+        },
+        {
+          "digit": 2,
+          "probability": 0.0407467857003212
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00038_fa_var_01\\cells\\cell_09.png",
+      "board_name": "sudoku_00038_fa_var_01",
+      "cell_name": "cell_09",
+      "validation_index": 311,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\018_board-sudoku_00038_fa_var_01_cell_09_true-6_pred-2_confidence-0.5090.png",
+      "true_label": 6,
+      "predicted_label": 2,
+      "confidence": 0.5090447664260864,
+      "top3": [
+        {
+          "digit": 2,
+          "probability": 0.5090447664260864
+        },
+        {
+          "digit": 4,
+          "probability": 0.2527677118778229
+        },
+        {
+          "digit": 6,
+          "probability": 0.19315990805625916
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00038_fa_var_01\\cells\\cell_21.png",
+      "board_name": "sudoku_00038_fa_var_01",
+      "cell_name": "cell_21",
+      "validation_index": 315,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\019_board-sudoku_00038_fa_var_01_cell_21_true-4_pred-3_confidence-0.8753.png",
+      "true_label": 4,
+      "predicted_label": 3,
+      "confidence": 0.8753060698509216,
+      "top3": [
+        {
+          "digit": 3,
+          "probability": 0.8753060698509216
+        },
+        {
+          "digit": 2,
+          "probability": 0.06995049864053726
+        },
+        {
+          "digit": 4,
+          "probability": 0.05455769971013069
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00038_fa_var_01\\cells\\cell_34.png",
+      "board_name": "sudoku_00038_fa_var_01",
+      "cell_name": "cell_34",
+      "validation_index": 322,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\020_board-sudoku_00038_fa_var_01_cell_34_true-4_pred-7_confidence-0.4183.png",
+      "true_label": 4,
+      "predicted_label": 7,
+      "confidence": 0.41825732588768005,
+      "top3": [
+        {
+          "digit": 7,
+          "probability": 0.41825732588768005
+        },
+        {
+          "digit": 2,
+          "probability": 0.28994667530059814
+        },
+        {
+          "digit": 3,
+          "probability": 0.19540609419345856
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00038_fa_var_01\\cells\\cell_57.png",
+      "board_name": "sudoku_00038_fa_var_01",
+      "cell_name": "cell_57",
+      "validation_index": 329,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\021_board-sudoku_00038_fa_var_01_cell_57_true-2_pred-7_confidence-0.9477.png",
+      "true_label": 2,
+      "predicted_label": 7,
+      "confidence": 0.947736918926239,
+      "top3": [
+        {
+          "digit": 7,
+          "probability": 0.947736918926239
+        },
+        {
+          "digit": 2,
+          "probability": 0.05044916272163391
+        },
+        {
+          "digit": 9,
+          "probability": 0.0013279016129672527
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00038_fa_var_01\\cells\\cell_71.png",
+      "board_name": "sudoku_00038_fa_var_01",
+      "cell_name": "cell_71",
+      "validation_index": 336,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\022_board-sudoku_00038_fa_var_01_cell_71_true-6_pred-4_confidence-0.9767.png",
+      "true_label": 6,
+      "predicted_label": 4,
+      "confidence": 0.9767336845397949,
+      "top3": [
+        {
+          "digit": 4,
+          "probability": 0.9767336845397949
+        },
+        {
+          "digit": 6,
+          "probability": 0.02316649816930294
+        },
+        {
+          "digit": 2,
+          "probability": 8.877042273525149e-05
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00041_fa_var_00\\cells\\cell_02.png",
+      "board_name": "sudoku_00041_fa_var_00",
+      "cell_name": "cell_02",
+      "validation_index": 337,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\023_board-sudoku_00041_fa_var_00_cell_02_true-6_pred-2_confidence-0.7042.png",
+      "true_label": 6,
+      "predicted_label": 2,
+      "confidence": 0.7041943669319153,
+      "top3": [
+        {
+          "digit": 2,
+          "probability": 0.7041943669319153
+        },
+        {
+          "digit": 4,
+          "probability": 0.13955122232437134
+        },
+        {
+          "digit": 6,
+          "probability": 0.09377571940422058
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00041_fa_var_00\\cells\\cell_10.png",
+      "board_name": "sudoku_00041_fa_var_00",
+      "cell_name": "cell_10",
+      "validation_index": 339,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\024_board-sudoku_00041_fa_var_00_cell_10_true-4_pred-3_confidence-0.9902.png",
+      "true_label": 4,
+      "predicted_label": 3,
+      "confidence": 0.9901826977729797,
+      "top3": [
+        {
+          "digit": 3,
+          "probability": 0.9901826977729797
+        },
+        {
+          "digit": 4,
+          "probability": 0.006668182089924812
+        },
+        {
+          "digit": 2,
+          "probability": 0.0031491355039179325
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00041_fa_var_00\\cells\\cell_23.png",
+      "board_name": "sudoku_00041_fa_var_00",
+      "cell_name": "cell_23",
+      "validation_index": 342,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\025_board-sudoku_00041_fa_var_00_cell_23_true-4_pred-3_confidence-0.4393.png",
+      "true_label": 4,
+      "predicted_label": 3,
+      "confidence": 0.4392874240875244,
+      "top3": [
+        {
+          "digit": 3,
+          "probability": 0.4392874240875244
+        },
+        {
+          "digit": 4,
+          "probability": 0.36066699028015137
+        },
+        {
+          "digit": 2,
+          "probability": 0.15733858942985535
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00041_fa_var_00\\cells\\cell_32.png",
+      "board_name": "sudoku_00041_fa_var_00",
+      "cell_name": "cell_32",
+      "validation_index": 345,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\026_board-sudoku_00041_fa_var_00_cell_32_true-6_pred-4_confidence-0.5904.png",
+      "true_label": 6,
+      "predicted_label": 4,
+      "confidence": 0.5904315710067749,
+      "top3": [
+        {
+          "digit": 4,
+          "probability": 0.5904315710067749
+        },
+        {
+          "digit": 6,
+          "probability": 0.4094805121421814
+        },
+        {
+          "digit": 2,
+          "probability": 7.494637975469232e-05
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00041_fa_var_00\\cells\\cell_46.png",
+      "board_name": "sudoku_00041_fa_var_00",
+      "cell_name": "cell_46",
+      "validation_index": 353,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\027_board-sudoku_00041_fa_var_00_cell_46_true-6_pred-4_confidence-0.8857.png",
+      "true_label": 6,
+      "predicted_label": 4,
+      "confidence": 0.8856690526008606,
+      "top3": [
+        {
+          "digit": 4,
+          "probability": 0.8856690526008606
+        },
+        {
+          "digit": 6,
+          "probability": 0.11427513509988785
+        },
+        {
+          "digit": 5,
+          "probability": 2.7664857043419033e-05
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00043_fa_var_00\\cells\\cell_74.png",
+      "board_name": "sudoku_00043_fa_var_00",
+      "cell_name": "cell_74",
+      "validation_index": 427,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\028_board-sudoku_00043_fa_var_00_cell_74_true-5_pred-8_confidence-0.5017.png",
+      "true_label": 5,
+      "predicted_label": 8,
+      "confidence": 0.5016975402832031,
+      "top3": [
+        {
+          "digit": 8,
+          "probability": 0.5016975402832031
+        },
+        {
+          "digit": 5,
+          "probability": 0.4983024597167969
+        },
+        {
+          "digit": 4,
+          "probability": 1.2024934867294057e-11
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00044_fa_var_00\\cells\\cell_19.png",
+      "board_name": "sudoku_00044_fa_var_00",
+      "cell_name": "cell_19",
+      "validation_index": 435,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\029_board-sudoku_00044_fa_var_00_cell_19_true-6_pred-4_confidence-0.5332.png",
+      "true_label": 6,
+      "predicted_label": 4,
+      "confidence": 0.5332261919975281,
+      "top3": [
+        {
+          "digit": 4,
+          "probability": 0.5332261919975281
+        },
+        {
+          "digit": 6,
+          "probability": 0.46661823987960815
+        },
+        {
+          "digit": 5,
+          "probability": 8.488712774123996e-05
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00044_fa_var_00\\cells\\cell_32.png",
+      "board_name": "sudoku_00044_fa_var_00",
+      "cell_name": "cell_32",
+      "validation_index": 439,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\030_board-sudoku_00044_fa_var_00_cell_32_true-2_pred-9_confidence-0.6317.png",
+      "true_label": 2,
+      "predicted_label": 9,
+      "confidence": 0.631729781627655,
+      "top3": [
+        {
+          "digit": 9,
+          "probability": 0.631729781627655
+        },
+        {
+          "digit": 7,
+          "probability": 0.13708969950675964
+        },
+        {
+          "digit": 2,
+          "probability": 0.09008385986089706
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00044_fa_var_00\\cells\\cell_54.png",
+      "board_name": "sudoku_00044_fa_var_00",
+      "cell_name": "cell_54",
+      "validation_index": 449,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\031_board-sudoku_00044_fa_var_00_cell_54_true-2_pred-7_confidence-0.9914.png",
+      "true_label": 2,
+      "predicted_label": 7,
+      "confidence": 0.9913927316665649,
+      "top3": [
+        {
+          "digit": 7,
+          "probability": 0.9913927316665649
+        },
+        {
+          "digit": 2,
+          "probability": 0.00781832542270422
+        },
+        {
+          "digit": 4,
+          "probability": 0.0007874220609664917
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00044_fa_var_00\\cells\\cell_66.png",
+      "board_name": "sudoku_00044_fa_var_00",
+      "cell_name": "cell_66",
+      "validation_index": 456,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\032_board-sudoku_00044_fa_var_00_cell_66_true-2_pred-7_confidence-0.8094.png",
+      "true_label": 2,
+      "predicted_label": 7,
+      "confidence": 0.80937260389328,
+      "top3": [
+        {
+          "digit": 7,
+          "probability": 0.80937260389328
+        },
+        {
+          "digit": 2,
+          "probability": 0.16468268632888794
+        },
+        {
+          "digit": 4,
+          "probability": 0.025532105937600136
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00044_fa_var_00\\cells\\cell_67.png",
+      "board_name": "sudoku_00044_fa_var_00",
+      "cell_name": "cell_67",
+      "validation_index": 457,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\033_board-sudoku_00044_fa_var_00_cell_67_true-6_pred-4_confidence-0.9526.png",
+      "true_label": 6,
+      "predicted_label": 4,
+      "confidence": 0.9526375532150269,
+      "top3": [
+        {
+          "digit": 4,
+          "probability": 0.9526375532150269
+        },
+        {
+          "digit": 6,
+          "probability": 0.04731079563498497
+        },
+        {
+          "digit": 5,
+          "probability": 3.583418219932355e-05
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00044_fa_var_00\\cells\\cell_78.png",
+      "board_name": "sudoku_00044_fa_var_00",
+      "cell_name": "cell_78",
+      "validation_index": 460,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\034_board-sudoku_00044_fa_var_00_cell_78_true-2_pred-7_confidence-0.6620.png",
+      "true_label": 2,
+      "predicted_label": 7,
+      "confidence": 0.6619939804077148,
+      "top3": [
+        {
+          "digit": 7,
+          "probability": 0.6619939804077148
+        },
+        {
+          "digit": 2,
+          "probability": 0.1674673706293106
+        },
+        {
+          "digit": 4,
+          "probability": 0.1605934351682663
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00044_fa_var_00\\cells\\cell_80.png",
+      "board_name": "sudoku_00044_fa_var_00",
+      "cell_name": "cell_80",
+      "validation_index": 462,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\035_board-sudoku_00044_fa_var_00_cell_80_true-6_pred-4_confidence-0.6068.png",
+      "true_label": 6,
+      "predicted_label": 4,
+      "confidence": 0.606762170791626,
+      "top3": [
+        {
+          "digit": 4,
+          "probability": 0.606762170791626
+        },
+        {
+          "digit": 6,
+          "probability": 0.23732589185237885
+        },
+        {
+          "digit": 1,
+          "probability": 0.07007783651351929
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00047_fa_var_02\\cells\\cell_77.png",
+      "board_name": "sudoku_00047_fa_var_02",
+      "cell_name": "cell_77",
+      "validation_index": 497,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\036_board-sudoku_00047_fa_var_02_cell_77_true-4_pred-3_confidence-0.8455.png",
+      "true_label": 4,
+      "predicted_label": 3,
+      "confidence": 0.8455021977424622,
+      "top3": [
+        {
+          "digit": 3,
+          "probability": 0.8455021977424622
+        },
+        {
+          "digit": 2,
+          "probability": 0.1108563020825386
+        },
+        {
+          "digit": 4,
+          "probability": 0.04314952716231346
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00048_fa_var_00\\cells\\cell_12.png",
+      "board_name": "sudoku_00048_fa_var_00",
+      "cell_name": "cell_12",
+      "validation_index": 501,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\037_board-sudoku_00048_fa_var_00_cell_12_true-5_pred-9_confidence-0.7492.png",
+      "true_label": 5,
+      "predicted_label": 9,
+      "confidence": 0.7492409944534302,
+      "top3": [
+        {
+          "digit": 9,
+          "probability": 0.7492409944534302
+        },
+        {
+          "digit": 5,
+          "probability": 0.19092723727226257
+        },
+        {
+          "digit": 8,
+          "probability": 0.05678879842162132
+        }
+      ]
+    },
+    {
+      "source_cell_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\sudoku\\cell_cache\\generated\\fa\\images_variant\\sudoku_00048_fa_var_00\\cells\\cell_16.png",
+      "board_name": "sudoku_00048_fa_var_00",
+      "cell_name": "cell_16",
+      "validation_index": 503,
+      "image_path": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\storage\\runs\\digit_recognition\\2026-07-14_20-05-29\\misclassified_validation\\038_board-sudoku_00048_fa_var_00_cell_16_true-3_pred-2_confidence-0.9130.png",
+      "true_label": 3,
+      "predicted_label": 2,
+      "confidence": 0.9130253791809082,
+      "top3": [
+        {
+          "digit": 2,
+          "probability": 0.9130253791809082
+        },
+        {
+          "digit": 3,
+          "probability": 0.08604448288679123
+        },
+        {
+          "digit": 1,
+          "probability": 0.0007026710663922131
+        }
+      ]
+    }
+  ]
+}

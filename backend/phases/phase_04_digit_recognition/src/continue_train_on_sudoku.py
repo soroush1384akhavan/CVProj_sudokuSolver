@@ -4,6 +4,8 @@ import types
 from pathlib import Path
 from typing import Any
 
+import cv2
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import ConcatDataset, DataLoader, Dataset, Subset
@@ -15,7 +17,9 @@ from .datasets.fromsoduko.charls_soduku_dataloader import DatSudokuCellDataset
 from .datasets.fromsoduko.generated_dataloader import GeneratedSudokuCellDataset
 from .model import build_model
 from .train import train_model, validate
-from .utils import latest_checkpoint_path, new_run_dir, save_json, save_training_plots, set_seed
+from .utils import new_run_dir, save_json, save_training_plots, set_seed
+
+from phases.phase_03_cell_extraction.cell_extraction import is_cell_empty
 
 from torchvision.utils import save_image
 from bisect import bisect_right
@@ -53,13 +57,146 @@ def freeze_batchnorm(model: nn.Module) -> nn.Module:
     return model
 
 
+# ---------------------------------------------------------------------------
+# Easy-empty-cell filtering
+#
+# The "empty" class massively outnumbers digit classes in Sudoku cell data.
+# Training on ALL of it makes the imbalance worse without teaching the model
+# anything new, since `is_cell_empty` (the existing heuristic) already gets
+# the easy majority of empty cells right on its own. What actually needs a
+# learned model is the cases where the heuristic is WRONG — e.g. glare/noise
+# that fools it into thinking an empty cell has a digit. So for training we
+# keep only empty-labeled samples where `is_cell_empty` returns False (a
+# miss); every other (non-empty) sample is kept untouched.
+# ---------------------------------------------------------------------------
+
+class FilteredCellDataset(Dataset):
+    """
+    Thin index-remapping wrapper around a base dataset that also exposes a
+    `.samples` list (subset of the base dataset's), so helpers that expect
+    direct `.samples` access (`_board_key`, `save_misclassified_samples`)
+    keep working the same way they do for the unfiltered dataset classes.
+    """
+
+    def __init__(self, base_dataset: Dataset, keep_indices: list[int]) -> None:
+        self.base_dataset = base_dataset
+        self.keep_indices = keep_indices
+
+        base_samples = getattr(base_dataset, "samples", None)
+        if isinstance(base_samples, list):
+            self.samples = [base_samples[i] for i in keep_indices]
+
+    def __len__(self) -> int:
+        return len(self.keep_indices)
+
+    def __getitem__(self, index: int):
+        return self.base_dataset[self.keep_indices[index]]
+
+
+def _get_sample_label_and_path(dataset: Dataset, index: int) -> tuple[int, Path]:
+    samples = getattr(dataset, "samples", None)
+    if not isinstance(samples, list) or index >= len(samples):
+        raise AttributeError(
+            f"{type(dataset).__name__} has no indexable `.samples` list; "
+            "cannot filter easy-empty cells without per-sample metadata. "
+            "Adjust _get_sample_label_and_path to match your dataset's sample structure."
+        )
+
+    sample = samples[index]
+
+    cell_path = getattr(sample, "cell_path", None)
+    label = getattr(sample, "label", None)
+    if label is None:
+        label = getattr(sample, "digit", None)
+
+    if isinstance(sample, (tuple, list)):
+        if cell_path is None and len(sample) > 0:
+            cell_path = sample[0]
+        if label is None and len(sample) > 1:
+            label = sample[1]
+
+    if cell_path is None or label is None:
+        raise ValueError(
+            f"Could not resolve (cell_path, label) for sample index {index} "
+            f"in {type(dataset).__name__}; adjust attribute names in "
+            "_get_sample_label_and_path to match your dataset."
+        )
+
+    return int(label), Path(cell_path)
+
+
+def _load_cell_image_for_empty_check(cell_path: Path) -> np.ndarray:
+    image = cv2.imread(str(cell_path), cv2.IMREAD_GRAYSCALE)
+    if image is None:
+        raise FileNotFoundError(f"Could not read cell image for empty-check: {cell_path}")
+    return image
+
+
+def filter_easy_empty_cells(
+    dataset: Dataset,
+    empty_label: int = 0,
+) -> FilteredCellDataset:
+    """
+    Keep every digit sample.
+
+    From ground-truth empty cells, keep only the hard-empty samples that
+    `is_cell_empty` sees as non-empty. Easy empty cells already handled by
+    the heuristic are removed from the fine-tuning dataset.
+
+    Cached cell images are already in the same polarity expected by
+    `is_cell_empty`: bright content on a dark background.
+    """
+    keep_indices: list[int] = []
+
+    kept_digits = 0
+    kept_hard_empty = 0
+    dropped_easy_empty = 0
+
+    for index in range(len(dataset)):
+        label, cell_path = _get_sample_label_and_path(dataset, index)
+
+        if label != empty_label:
+            keep_indices.append(index)
+            kept_digits += 1
+            continue
+
+        cell_image = _load_cell_image_for_empty_check(cell_path)
+        heuristic_says_empty = is_cell_empty(inverted_gray=cell_image)
+
+        if heuristic_says_empty:
+            dropped_easy_empty += 1
+            continue
+
+        keep_indices.append(index)
+        kept_hard_empty += 1
+
+    print(
+        f"[{type(dataset).__name__}] empty filtering:\n"
+        f"  total input:        {len(dataset)}\n"
+        f"  kept digits:        {kept_digits}\n"
+        f"  kept hard empty:    {kept_hard_empty}\n"
+        f"  dropped easy empty: {dropped_easy_empty}\n"
+        f"  total kept:         {len(keep_indices)}"
+    )
+
+    return FilteredCellDataset(dataset, keep_indices)
+
+
 def _build_sudoku_sources(
     transform: DigitTransform,
     sudoku_cfg: dict[str, Any],
     refresh_cache: bool,
+    filter_easy_empty: bool = False,
 ) -> tuple[list[Dataset], dict[str, int]]:
     cache_root = _resolve_path(sudoku_cfg.get("cache_dir", "storage/sudoku/cell_cache"))
     include_empty_cells = bool(sudoku_cfg.get("include_empty_cells", False))
+    empty_label = int(sudoku_cfg.get("empty_label", 0))
+
+    if filter_easy_empty and not include_empty_cells:
+        raise ValueError(
+            "digit_recognition.data.sudoku_cells.include_empty_cells must be true "
+            "to collect hard empty cells missed by is_cell_empty."
+        )
 
     datasets: list[Dataset] = []
     summary: dict[str, int] = {}
@@ -90,14 +227,20 @@ def _build_sudoku_sources(
             return_metadata=False,
         )
 
-        datasets.append(dataset)
         print(
             f"Generated Sudoku dataset loaded: "
             f"language=en | samples={len(dataset)} | root={root_path}"
         )
 
+        summary[f"generated:{root_path.name}:raw"] = len(dataset)
 
-        summary[f"generated:{root_path.name}"] = len(dataset)
+        if filter_easy_empty and include_empty_cells:
+            dataset = filter_easy_empty_cells(dataset, empty_label=empty_label)
+            summary[f"generated:{root_path.name}"] = len(dataset)
+        else:
+            summary[f"generated:{root_path.name}"] = len(dataset)
+
+        datasets.append(dataset)
 
     for root in _as_list(sudoku_cfg.get("dat_roots")):
         root_path = _resolve_path(root)
@@ -112,8 +255,16 @@ def _build_sudoku_sources(
             transform=transform,
             refresh_cache=refresh_cache,
         )
+
+        summary[f"dat:{root_path.name}:raw"] = len(dataset)
+
+        if filter_easy_empty and include_empty_cells:
+            dataset = filter_easy_empty_cells(dataset, empty_label=empty_label)
+            summary[f"dat:{root_path.name}"] = len(dataset)
+        else:
+            summary[f"dat:{root_path.name}"] = len(dataset)
+
         datasets.append(dataset)
-        summary[f"dat:{root_path.name}"] = len(dataset)
 
     if not datasets:
         raise ValueError("No Sudoku fine-tuning datasets found. Check generated_roots/dat_roots in config.")
@@ -125,19 +276,14 @@ def _board_key(
     source_index: int,
     local_index: int,
 ) -> str:
-    """
-    همه سلول‌های یک تصویر سودوکو را در یک گروه نگه می‌دارد
-    تا بین train و validation پخش نشوند.
-    """
+
     samples = getattr(dataset, "samples", None)
 
     if isinstance(samples, list) and local_index < len(samples):
         sample = samples[local_index]
 
-        # دیتالودر جدید: GeneratedSudokuCellSample
         cell_path = getattr(sample, "cell_path", None)
 
-        # سازگاری با دیتالودرهای قدیمی که sample به شکل tuple/list است
         if cell_path is None and isinstance(sample, (tuple, list)) and sample:
             cell_path = sample[0]
 
@@ -186,14 +332,10 @@ def _split_by_board(sources: list[Dataset], validation_split: float, seed: int) 
 
 
 def _build_replay_subset(n_new_samples: int, replay_ratio: float, seed: int) -> tuple[Subset, int]:
-    """
-    زیرمجموعه‌ای از دیتای اصلی (Hoda/MNIST/Chars74K، بر اساس کانفیگ
-    digit_recognition.data.languages) برای rehearsal در حین فاین‌تیون.
-    """
     if replay_ratio <= 0:
         raise ValueError("replay_ratio must be positive when replay is enabled.")
 
-    original_loader, _, _ = build_digit_dataloaders()
+    original_loader, _, _ = build_digit_dataloaders(languages="en")
     original_dataset = original_loader.dataset
 
     n_replay = max(1, round(n_new_samples * replay_ratio))
@@ -225,11 +367,14 @@ def build_sudoku_finetune_loaders() -> tuple[DataLoader, DataLoader, dict[str, i
     train_transform = DigitTransform(size=image_size, augment=augmentation_enabled, augment_config=aug_cfg)
     eval_transform = DigitTransform(size=image_size, augment=False, augment_config=aug_cfg)
 
-    # دیتاست train (augmentation فعال) و eval (بدون augmentation) از یک منبع
-    # ولی با transform متفاوت ساخته می‌شن؛ چون هر دو یک بار cache می‌سازن،
-    # فقط بار اول refresh_cache واقعاً اجرا می‌شه.
-    train_sources, summary = _build_sudoku_sources(train_transform, sudoku_cfg, refresh_cache)
-    eval_sources, _ = _build_sudoku_sources(eval_transform, sudoku_cfg, refresh_cache=False)
+    # Train and validation must use the same filtered sample indices.
+    # Their only difference is augmentation: enabled for train, disabled for eval.
+    train_sources, summary = _build_sudoku_sources(
+        train_transform, sudoku_cfg, refresh_cache, filter_easy_empty=True
+    )
+    eval_sources, _ = _build_sudoku_sources(
+        eval_transform, sudoku_cfg, refresh_cache=False, filter_easy_empty=True
+    )
 
     sudoku_train_full = ConcatDataset(train_sources)
     sudoku_eval_full = ConcatDataset(eval_sources)
@@ -294,13 +439,15 @@ def _resolve_source_checkpoint(phase_cfg: dict[str, Any], fine_tune_cfg: dict[st
     if override:
         return _resolve_path(override)
 
-    configured = phase_cfg.get("model_path")
-    if configured:
-        path = _resolve_path(configured)
-        if path.is_file():
-            return path
+    configured = phase_cfg.get("model_paths", {}).get("en")
 
-    return latest_checkpoint_path()
+    if not configured:
+        raise KeyError(
+            "English model path is not configured. "
+            "Expected: digit_recognition.model_paths.en"
+        )
+
+    return _resolve_path(configured)
 
 def resolve_dataset_index(
     dataset: Dataset,
@@ -333,6 +480,14 @@ def resolve_dataset_index(
             local_index,
         )
 
+    if isinstance(dataset, FilteredCellDataset):
+        original_index = dataset.keep_indices[index]
+
+        return resolve_dataset_index(
+            dataset.base_dataset,
+            original_index,
+        )
+
     return dataset, index
 
 def save_misclassified_samples(
@@ -342,10 +497,6 @@ def save_misclassified_samples(
     output_dir: Path,
     max_samples: int = 100,
 ) -> list[dict[str, Any]]:
-    """
-    نمونه‌های اشتباه validation را به‌همراه prediction، confidence و top-3
-    داخل output_dir ذخیره می‌کند.
-    """
     output_dir.mkdir(parents=True, exist_ok=True)
 
     model.eval()
@@ -419,8 +570,6 @@ def save_misclassified_samples(
 
                 image_path = output_dir / filename
 
-                # normalize=True باعث می‌شود حتی اگر تصویر normalize شده باشد،
-                # خروجی قابل مشاهده ذخیره شود.
                 save_image(
                     images[local_index].detach().cpu(),
                     image_path,
@@ -506,6 +655,7 @@ def main() -> None:
     output_checkpoint_path = run_dir / checkpoint_name
 
     used_config = {
+        "language": "en",
         "model": model_cfg,
         "training": train_cfg,
         "sudoku_fine_tune": fine_tune_cfg,
@@ -520,6 +670,7 @@ def main() -> None:
     save_json(run_dir / "config_used.json", used_config)
 
     print(f"Using device: {device}")
+    print("Fine-tune language: en")
     print(f"Loaded checkpoint: {checkpoint_path}")
     print(f"BatchNorm frozen: {freeze_bn}")
     print(f"Run directory: {run_dir}")
@@ -557,6 +708,7 @@ def main() -> None:
     )
 
     report = {
+        "language": "en",
         "run_dir": str(run_dir),
         "source_checkpoint_path": str(checkpoint_path),
         "checkpoint_path": str(output_checkpoint_path),

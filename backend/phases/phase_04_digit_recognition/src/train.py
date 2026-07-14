@@ -167,7 +167,7 @@ def main() -> None:
     checkpoint_path = run_dir / checkpoint_name
     print(f"Run directory: {run_dir}")
 
-    train_loader, val_loader, test_loader = build_digit_dataloaders(languages="fa")
+    train_loader, val_loader, test_loader = build_digit_dataloaders(languages="en")
     per_dataset_eval_sets = build_eval_only_datasets()
 
     num_classes = int(model_cfg.get("num_classes", 10))

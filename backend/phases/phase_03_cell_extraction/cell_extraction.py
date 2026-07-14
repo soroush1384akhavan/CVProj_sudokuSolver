@@ -6,18 +6,29 @@ from app.config import settings
 from common.images import save_image
 
 
-def normalize_binary_mask(binary: np.ndarray) -> np.ndarray:
-    """ماسک را به تصویر uint8 شامل 0 و 255 تبدیل می‌کند.
-
-    فرض می‌کنیم foreground نسبت به background مساحت کمتری دارد. اگر بیشتر تصویر
-    سفید باشد، polarity را معکوس می‌کنیم.
+def normalize_binary_mask(
+    binary: np.ndarray,
+    invert: bool | None = None,
+) -> np.ndarray:
     """
+    Normalize polarity so ink/digit pixels are 255 and background is 0.
+
+    IMPORTANT: pass `invert` explicitly (decided ONCE for the whole board)
+    whenever possible. Deciding per-cell from a local white-pixel ratio is
+    fragile: uneven lighting/glare on a single cell can push that cell's
+    local white ratio past 0.5 even when the rest of the board doesn't,
+    flipping polarity for that one cell and erasing its digit. Falling back
+    to the per-cell heuristic below is only a last resort when no global
+    decision is available (e.g. this function is called standalone).
+    """
+
     mask = binary
 
-    white_ratio = float(np.count_nonzero(mask) / mask.size)
+    if invert is None:
+        white_ratio = float(np.count_nonzero(mask) / mask.size)
+        invert = white_ratio > 0.50
 
-    # اگر background سفید باشد، foreground را سفید می‌کنیم.
-    if white_ratio > 0.50:
+    if invert:
         mask = cv2.bitwise_not(mask)
 
     return mask
@@ -29,17 +40,13 @@ def center_and_scale_digit(
     output_size: int = 28,
     padding: int = 4,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """محدوده رقم را پیدا کرده، آن را بدون ریسایز مخرب بزرگ‌تر کرده و دقیقاً در
 
-    مرکز بوم خروجی قرار می‌دهد. هم روی تصویر خاکستری و هم ماسک اعمال می‌شود.
-    """
     canvas_gray = np.zeros((output_size, output_size), dtype=np.uint8)
     canvas_mask = np.zeros((output_size, output_size), dtype=np.uint8)
 
     if digit_mask is None or np.count_nonzero(digit_mask) == 0:
         return canvas_gray, canvas_mask
 
-    # پیدا کردن محدوده دقیق رقم (Bounding Box)
     pts = np.argwhere(digit_mask > 0)
     if pts.size == 0:
         return canvas_gray, canvas_mask
@@ -57,7 +64,6 @@ def center_and_scale_digit(
     if max_content_size <= 0:
         max_content_size = output_size
 
-    # محاسبه ضریب مقیاس متناسب بدون تغییر نسبت ابعاد (Aspect Ratio)
     scale = min(max_content_size / digit_w, max_content_size / digit_h)
 
     new_w = max(1, int(round(digit_w * scale)))
@@ -86,11 +92,6 @@ def is_cell_empty(
     min_ink_ratio: float | None = None,
     margin_ratio: float | None = None,
 ) -> bool:
-    """تشخیص خالی‌بودن سلول با یک ماسک موقت Otsu.
-
-    تصویر خروجی تغییر نمی‌کند. ناحیه‌ی اطراف سلول نادیده گرفته می‌شود تا خطوط جدول
-    باعث non-empty شدن خانه نشوند.
-    """
     if inverted_gray.ndim != 2:
         raise ValueError("inverted_gray must be a single-channel image")
 
@@ -138,7 +139,7 @@ def is_cell_empty(
         inner,
         0,
         255,
-        cv2.THRESH_BINARY,
+        cv2.THRESH_BINARY + cv2.THRESH_OTSU,
     )
 
     inner_height, inner_width = binary.shape
@@ -177,9 +178,10 @@ def is_cell_empty(
         )
 
         if touches_border:
-            continue
+            component_extent = component_area / max(1, component_width * component_height)
+            if component_extent > 0.85:
+                continue
 
-        # نویز کوچک یا خط خیلی باریک را رقم در نظر نگیر.
         if component_width < 2:
             continue
 
@@ -217,10 +219,8 @@ def detect_white_edge_margins(
         if line.size == 0:
             return False
 
-        # تعداد پیکسل‌های سفید همین سطر یا ستون
         white_pixels = np.count_nonzero(line > 127)
 
-        # نسبت سفیدی فقط برای همین خط
         white_ratio = white_pixels / line.size
 
         return white_ratio >= min_white_ratio
@@ -268,15 +268,7 @@ def zero_margin_and_shift_inward(
     image: np.ndarray,
     margins: tuple[int, int, int, int],
 ) -> np.ndarray:
-    """حاشیه‌های تشخیص‌داده‌شده را صفر می‌کند و محتوا را به‌اندازه تعداد خطوط
 
-    حاشیه، به سمت داخل تصویر جابه‌جا می‌کند.
-
-    top    -> شیفت به بالا
-    bottom -> شیفت به پایین
-    left   -> شیفت به چپ
-    right  -> شیفت به راست
-    """
     if image.ndim != 2:
         raise ValueError("image must be a single-channel image")
 
@@ -290,7 +282,6 @@ def zero_margin_and_shift_inward(
 
     result = image.copy()
 
-    # اول خود خطوط مارجین را صفر کن
     if top > 0:
         result[:top, :] = 0
 
@@ -303,7 +294,6 @@ def zero_margin_and_shift_inward(
     if right > 0:
         result[:, width - right :] = 0
 
-    # جهت نهایی جابه‌جایی (اصلاح شده به سمت داخل تصویر)
     shift_y = bottom - top
     shift_x = right - left
 
@@ -339,6 +329,7 @@ def clean_cell(
     margin_ratio: float | None = None,
     output_size: int | None = None,
     min_area_ratio: float | None = None,
+    invert: bool | None = None,
 ) -> tuple[np.ndarray, np.ndarray, bool]:
     del margin_ratio
     del min_area_ratio
@@ -349,10 +340,12 @@ def clean_cell(
 
     output_size = expected_size if output_size is None else int(output_size)
 
-    # مهم: polarity ماسک را یکسان کن.
-    mask = normalize_binary_mask(binary_cell)
+    # `invert` should be decided ONCE for the whole board (see extract_cells)
+    # and passed down here, rather than re-derived per cell — see
+    # normalize_binary_mask's docstring for why the per-cell heuristic is
+    # unreliable under uneven lighting.
+    mask = normalize_binary_mask(binary_cell, invert=invert)
 
-    # مطمئن شو ماسک فقط 0 و 255 دارد.
     mask = np.where(
         mask > 0,
         255,
@@ -361,7 +354,7 @@ def clean_cell(
 
     inverted_gray = cv2.bitwise_not(gray)
 
-    edge_scan_depth = int(settings.get("cell_extraction.edge_margin_scan_depth", 8))
+    edge_scan_depth = int(settings.get("cell_extraction.edge_margin_scan_depth", 9))
 
     edge_min_white_ratio = float(
         settings.get(
@@ -370,14 +363,12 @@ def clean_cell(
         )
     )
 
-    # فقط از روی ماسک تشخیص بده.
     margins = detect_white_edge_margins(
         mask,
         scan_depth=edge_scan_depth,
         min_white_ratio=edge_min_white_ratio,
     )
 
-    # ماسک و grayscale باید دقیقاً یکسان جابه‌جا شوند.
     shifted_mask = zero_margin_and_shift_inward(
         mask,
         margins,
@@ -388,7 +379,6 @@ def clean_cell(
         margins,
     )
 
-    # حالا این دو کاملاً هم‌راستا هستند.
     cleaned = np.where(
         shifted_mask > 0,
         shifted_gray,
@@ -423,12 +413,6 @@ def clean_cell(
                 0,
                 255,
             ).astype(np.uint8)
-
-    # انتقال رقم به مرکز بوم و بزرگ‌سازی متناسب و باکیفیت
-    # padding_config = int(settings.get("cell_extraction.digit_padding", 4))
-    # centered_cleaned, centered_mask = center_and_scale_digit(
-    #     cleaned, shifted_mask, output_size=output_size, padding=padding_config
-    # )
 
     return cleaned, mask, False
 
@@ -531,6 +515,9 @@ def extract_cells(
     cell_height = height // 9
     cell_width = width // 9
 
+    board_white_ratio = float(np.count_nonzero(warped_binary) / warped_binary.size)
+    board_invert = board_white_ratio > 0.50
+
     raw_cells: list[np.ndarray] = []
     binary_cells: list[np.ndarray] = []
     digit_masks: list[np.ndarray] = []
@@ -578,6 +565,7 @@ def extract_cells(
             cleaned, digit_mask, empty = clean_cell(
                 cell=raw_gray,
                 binary_cell=binary_gray,
+                invert=board_invert,
             )
 
             index = row * 9 + column
@@ -597,7 +585,7 @@ def extract_cells(
                 )
 
             raw_cells.append(raw_gray)
-            binary_cells.append(normalize_binary_mask(binary_gray))
+            binary_cells.append(normalize_binary_mask(binary_gray, invert=board_invert))
             digit_masks.append(digit_mask)
             cleaned_cells.append(cleaned)
 

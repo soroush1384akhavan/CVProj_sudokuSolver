@@ -1,0 +1,60 @@
+{
+  "language": "fa",
+  "checkpoint": "C:\\Users\\sorou\\OneDrive\\Desktop\\sudoku-cv-windows-pytorch-opencv\\backend\\models\\digit_recognition\\fa\\digit_cnn.pth",
+  "image_size": 28,
+  "batch_size": 1,
+  "warmup": 30,
+  "runs": 300,
+  "cpu_threads": 1,
+  "opset": 17,
+  "results": [
+    {
+      "format": "PyTorch",
+      "model_file": "digit_cnn.pth",
+      "size_mb": 1.7977886199951172,
+      "avg_latency_ms": 2.665894666666667,
+      "median_latency_ms": 2.4873000000000003,
+      "p95_latency_ms": 3.8302850000000013,
+      "min_latency_ms": 1.8008,
+      "max_latency_ms": 6.0866,
+      "std_latency_ms": 0.6341413540409495,
+      "throughput_samples_s": 375.108593937945,
+      "max_output_diff": 0.0,
+      "speedup_vs_pytorch": 1.0,
+      "latency_reduction_pct": 0.0,
+      "size_reduction_pct": 0.0
+    },
+    {
+      "format": "TorchScript",
+      "model_file": "digit_cnn_torchscript.pt",
+      "size_mb": 1.791031837463379,
+      "avg_latency_ms": 1.6532223333333331,
+      "median_latency_ms": 1.60845,
+      "p95_latency_ms": 1.96282,
+      "min_latency_ms": 1.4031,
+      "max_latency_ms": 2.6583,
+      "std_latency_ms": 0.16248978573402356,
+      "throughput_samples_s": 604.8793195188307,
+      "max_output_diff": 2.86102294921875e-06,
+      "speedup_vs_pytorch": 1.6125445518822135,
+      "latency_reduction_pct": 37.98620950765248,
+      "size_reduction_pct": 0.3758385416721924
+    },
+    {
+      "format": "ONNX",
+      "model_file": "digit_cnn.onnx",
+      "size_mb": 1.7873411178588867,
+      "avg_latency_ms": 27.544233666666667,
+      "median_latency_ms": 38.61965,
+      "p95_latency_ms": 58.012945,
+      "min_latency_ms": 2.3763,
+      "max_latency_ms": 67.4336,
+      "std_latency_ms": 21.163073482248112,
+      "throughput_samples_s": 36.30523949592305,
+      "max_output_diff": 9.5367431640625e-07,
+      "speedup_vs_pytorch": 0.09678594434423729,
+      "latency_reduction_pct": -933.207876180154,
+      "size_reduction_pct": 0.5811307302778924
+    }
+  ]
+}
